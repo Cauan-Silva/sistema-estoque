@@ -14,3 +14,12 @@ class Produto:
             f"Quantidade: {self.quantidade} | "
             f"Preço: R$ {self.preco:.2f}"
         )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "categoria": self.categoria,
+            "quantidade": self.quantidade,
+            "preco": self.preco
+        }
