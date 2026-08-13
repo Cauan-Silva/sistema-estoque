@@ -1,53 +1,8 @@
-import json
-import os
-
 from produto import Produto
+from repositorio import carregar_produtos, salvar_produtos
 
 
-produtos = []
-
-ARQUIVO_DADOS = os.path.join(
-    os.path.dirname(__file__),
-    "dados.json"
-)
-
-
-def carregar_produtos():
-    if not os.path.exists(ARQUIVO_DADOS):
-        return
-
-    try:
-        with open(ARQUIVO_DADOS, "r", encoding="utf-8") as arquivo:
-            dados = json.load(arquivo)
-
-        for item in dados:
-            produto = Produto(
-                item["id"],
-                item["nome"],
-                item["categoria"],
-                item["quantidade"],
-                item["preco"]
-            )
-
-            produtos.append(produto)
-
-    except json.JSONDecodeError:
-        print("Erro ao carregar o arquivo de dados.")
-
-
-def salvar_produtos():
-    dados = []
-
-    for produto in produtos:
-        dados.append(produto.para_dicionario())
-
-    with open(ARQUIVO_DADOS, "w", encoding="utf-8") as arquivo:
-        json.dump(
-            dados,
-            arquivo,
-            indent=4,
-            ensure_ascii=False
-        )
+produtos = carregar_produtos()
 
 
 def gerar_proximo_id():
@@ -84,26 +39,20 @@ def cadastrar_produto():
     try:
         quantidade = int(input("Quantidade: "))
         preco = float(input("Preço: "))
-
     except ValueError:
-        print(
-            "Erro: quantidade deve ser um número inteiro "
-            "e preço deve ser um número."
-        )
+        print("Erro: quantidade e preço devem ser números.")
         return
 
     if quantidade < 0:
-        print("Erro: a quantidade não pode ser negativa.")
+        print("Erro: quantidade não pode ser negativa.")
         return
 
     if preco < 0:
-        print("Erro: o preço não pode ser negativo.")
+        print("Erro: preço não pode ser negativo.")
         return
 
-    id_produto = gerar_proximo_id()
-
     produto = Produto(
-        id_produto,
+        gerar_proximo_id(),
         nome,
         categoria,
         quantidade,
@@ -112,7 +61,7 @@ def cadastrar_produto():
 
     produtos.append(produto)
 
-    salvar_produtos()
+    salvar_produtos(produtos)
 
     print("\nProduto cadastrado com sucesso!")
 
@@ -141,7 +90,6 @@ def editar_produto():
         id_produto = int(
             input("\nDigite o ID do produto que deseja editar: ")
         )
-
     except ValueError:
         print("ID inválido.")
         return
@@ -181,7 +129,7 @@ def editar_produto():
             quantidade = int(nova_quantidade)
 
             if quantidade < 0:
-                print("Erro: a quantidade não pode ser negativa.")
+                print("Quantidade não pode ser negativa.")
                 return
 
             produto.quantidade = quantidade
@@ -195,7 +143,7 @@ def editar_produto():
             preco = float(novo_preco)
 
             if preco < 0:
-                print("Erro: o preço não pode ser negativo.")
+                print("Preço não pode ser negativo.")
                 return
 
             produto.preco = preco
@@ -204,7 +152,7 @@ def editar_produto():
             print("Preço inválido.")
             return
 
-    salvar_produtos()
+    salvar_produtos(produtos)
 
     print("\nProduto atualizado com sucesso!")
 
@@ -222,7 +170,6 @@ def excluir_produto():
         id_produto = int(
             input("\nDigite o ID do produto que deseja excluir: ")
         )
-
     except ValueError:
         print("ID inválido.")
         return
@@ -240,17 +187,14 @@ def excluir_produto():
     if confirmacao == "s":
         produtos.remove(produto)
 
-        salvar_produtos()
+        salvar_produtos(produtos)
 
         print("\nProduto excluído com sucesso!")
-
     else:
         print("\nExclusão cancelada.")
 
 
 def main():
-    carregar_produtos()
-
     while True:
         print("\n=== Sistema de Gestão de Estoque ===")
         print("1 - Cadastrar produto")
