@@ -15,7 +15,7 @@ class Produto:
             f"Preço: R$ {self.preco:.2f}"
         )
 
-    def to_dict(self):
+    def para_dicionario(self):
         return {
             "id": self.id,
             "nome": self.nome,

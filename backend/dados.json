@@ -5,5 +5,12 @@
         "categoria": "1",
         "quantidade": 2,
         "preco": 4.0
+    },
+    {
+        "id": 2,
+        "nome": "ONU F6600P",
+        "categoria": "ONU",
+        "quantidade": 15,
+        "preco": 250.0
     }
 ]

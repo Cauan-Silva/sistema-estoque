@@ -39,14 +39,14 @@ def salvar_produtos():
     dados = []
 
     for produto in produtos:
-        dados.append(produto.to_dict())
+        dados.append(produto.para_dicionario())
 
     with open(ARQUIVO_DADOS, "w", encoding="utf-8") as arquivo:
         json.dump(
             dados,
             arquivo,
-            ensure_ascii=False,
-            indent=4
+            indent=4,
+            ensure_ascii=False
         )
 
 
@@ -74,11 +74,11 @@ def cadastrar_produto():
     categoria = input("Categoria: ").strip()
 
     if not nome:
-        print("Erro: o nome do produto é obrigatório.")
+        print("Erro: o nome não pode ficar vazio.")
         return
 
     if not categoria:
-        print("Erro: a categoria é obrigatória.")
+        print("Erro: a categoria não pode ficar vazia.")
         return
 
     try:
@@ -87,17 +87,17 @@ def cadastrar_produto():
 
     except ValueError:
         print(
-            "\nErro: quantidade deve ser um número inteiro "
+            "Erro: quantidade deve ser um número inteiro "
             "e preço deve ser um número."
         )
         return
 
     if quantidade < 0:
-        print("\nErro: a quantidade não pode ser negativa.")
+        print("Erro: a quantidade não pode ser negativa.")
         return
 
     if preco < 0:
-        print("\nErro: o preço não pode ser negativo.")
+        print("Erro: o preço não pode ser negativo.")
         return
 
     id_produto = gerar_proximo_id()
@@ -181,9 +181,7 @@ def editar_produto():
             quantidade = int(nova_quantidade)
 
             if quantidade < 0:
-                print(
-                    "Erro: a quantidade não pode ser negativa."
-                )
+                print("Erro: a quantidade não pode ser negativa.")
                 return
 
             produto.quantidade = quantidade
@@ -197,9 +195,7 @@ def editar_produto():
             preco = float(novo_preco)
 
             if preco < 0:
-                print(
-                    "Erro: o preço não pode ser negativo."
-                )
+                print("Erro: o preço não pode ser negativo.")
                 return
 
             produto.preco = preco
@@ -238,8 +234,7 @@ def excluir_produto():
         return
 
     confirmacao = input(
-        f"Tem certeza que deseja excluir "
-        f"'{produto.nome}'? (s/n): "
+        f"Tem certeza que deseja excluir '{produto.nome}'? (s/n): "
     ).lower()
 
     if confirmacao == "s":
