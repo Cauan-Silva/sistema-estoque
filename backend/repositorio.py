@@ -1,7 +1,7 @@
 import psycopg2
 
-from database import conectar
-from produto import Produto
+from backend.database import conectar
+from backend.produto import Produto
 
 
 def cadastrar_produto(nome, categoria, quantidade, preco):
@@ -39,7 +39,7 @@ def cadastrar_produto(nome, categoria, quantidade, preco):
         cursor.close()
         conexao.close()
 
-        return id_produto
+        return buscar_produto_por_id(id_produto)
 
     except psycopg2.Error as erro:
         conexao.rollback()
@@ -77,15 +77,15 @@ def listar_produtos():
         produtos = []
 
         for registro in registros:
-            produto = Produto(
-                registro[0],
-                registro[1],
-                registro[2],
-                registro[3],
-                float(registro[4])
+            produtos.append(
+                Produto(
+                    registro[0],
+                    registro[1],
+                    registro[2],
+                    registro[3],
+                    float(registro[4])
+                )
             )
-
-            produtos.append(produto)
 
         cursor.close()
         conexao.close()
@@ -157,7 +157,7 @@ def atualizar_produto(
     conexao = conectar()
 
     if conexao is None:
-        return False
+        return None
 
     try:
         cursor = conexao.cursor()
@@ -170,7 +170,8 @@ def atualizar_produto(
                 categoria = %s,
                 quantidade = %s,
                 preco = %s
-            WHERE id = %s;
+            WHERE id = %s
+            RETURNING id;
             """,
             (
                 nome,
@@ -181,14 +182,17 @@ def atualizar_produto(
             )
         )
 
-        atualizado = cursor.rowcount > 0
+        registro = cursor.fetchone()
 
         conexao.commit()
 
         cursor.close()
         conexao.close()
 
-        return atualizado
+        if registro is None:
+            return None
+
+        return buscar_produto_por_id(id_produto)
 
     except psycopg2.Error as erro:
         conexao.rollback()
@@ -196,7 +200,7 @@ def atualizar_produto(
 
         print(f"Erro ao atualizar produto: {erro}")
 
-        return False
+        return None
 
 
 def excluir_produto(id_produto):
