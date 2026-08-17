@@ -14,12 +14,3 @@ class Produto:
             f"Quantidade: {self.quantidade} | "
             f"Preço: R$ {self.preco:.2f}"
         )
-
-    def para_dicionario(self):
-        return {
-            "id": self.id,
-            "nome": self.nome,
-            "categoria": self.categoria,
-            "quantidade": self.quantidade,
-            "preco": self.preco
-        }

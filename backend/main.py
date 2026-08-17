@@ -1,28 +1,15 @@
-from produto import Produto
-from repositorio import carregar_produtos, salvar_produtos
+from database import criar_tabela
+
+from repositorio import (
+    atualizar_produto,
+    buscar_produto_por_id,
+    cadastrar_produto,
+    excluir_produto,
+    listar_produtos
+)
 
 
-produtos = carregar_produtos()
-
-
-def gerar_proximo_id():
-    if not produtos:
-        return 1
-
-    maior_id = max(produto.id for produto in produtos)
-
-    return maior_id + 1
-
-
-def buscar_produto_por_id(id_produto):
-    for produto in produtos:
-        if produto.id == id_produto:
-            return produto
-
-    return None
-
-
-def cadastrar_produto():
+def cadastrar():
     print("\n--- Cadastro de Produto ---")
 
     nome = input("Nome do produto: ").strip()
@@ -51,23 +38,24 @@ def cadastrar_produto():
         print("Erro: preço não pode ser negativo.")
         return
 
-    produto = Produto(
-        gerar_proximo_id(),
+    id_produto = cadastrar_produto(
         nome,
         categoria,
         quantidade,
         preco
     )
 
-    produtos.append(produto)
+    if id_produto is not None:
+        print(
+            f"\nProduto cadastrado com sucesso! "
+            f"ID: {id_produto}"
+        )
 
-    salvar_produtos(produtos)
 
-    print("\nProduto cadastrado com sucesso!")
-
-
-def listar_produtos():
+def listar():
     print("\n--- Produtos cadastrados ---")
+
+    produtos = listar_produtos()
 
     if not produtos:
         print("Nenhum produto cadastrado.")
@@ -77,14 +65,10 @@ def listar_produtos():
         print(produto)
 
 
-def editar_produto():
+def editar():
     print("\n--- Editar Produto ---")
 
-    if not produtos:
-        print("Nenhum produto cadastrado.")
-        return
-
-    listar_produtos()
+    listar()
 
     try:
         id_produto = int(
@@ -118,53 +102,58 @@ def editar_produto():
         f"Preço [{produto.preco:.2f}]: "
     ).strip()
 
-    if novo_nome:
-        produto.nome = novo_nome
+    nome = novo_nome if novo_nome else produto.nome
 
-    if nova_categoria:
-        produto.categoria = nova_categoria
+    categoria = (
+        nova_categoria
+        if nova_categoria
+        else produto.categoria
+    )
+
+    quantidade = produto.quantidade
+
+    preco = produto.preco
 
     if nova_quantidade:
         try:
             quantidade = int(nova_quantidade)
-
-            if quantidade < 0:
-                print("Quantidade não pode ser negativa.")
-                return
-
-            produto.quantidade = quantidade
-
         except ValueError:
             print("Quantidade inválida.")
+            return
+
+        if quantidade < 0:
+            print("Quantidade não pode ser negativa.")
             return
 
     if novo_preco:
         try:
             preco = float(novo_preco)
-
-            if preco < 0:
-                print("Preço não pode ser negativo.")
-                return
-
-            produto.preco = preco
-
         except ValueError:
             print("Preço inválido.")
             return
 
-    salvar_produtos(produtos)
+        if preco < 0:
+            print("Preço não pode ser negativo.")
+            return
 
-    print("\nProduto atualizado com sucesso!")
+    sucesso = atualizar_produto(
+        id_produto,
+        nome,
+        categoria,
+        quantidade,
+        preco
+    )
+
+    if sucesso:
+        print("\nProduto atualizado com sucesso!")
+    else:
+        print("\nNão foi possível atualizar o produto.")
 
 
-def excluir_produto():
+def excluir():
     print("\n--- Excluir Produto ---")
 
-    if not produtos:
-        print("Nenhum produto cadastrado.")
-        return
-
-    listar_produtos()
+    listar()
 
     try:
         id_produto = int(
@@ -181,20 +170,25 @@ def excluir_produto():
         return
 
     confirmacao = input(
-        f"Tem certeza que deseja excluir '{produto.nome}'? (s/n): "
-    ).lower()
+        f"Tem certeza que deseja excluir "
+        f"'{produto.nome}'? (s/n): "
+    ).strip().lower()
 
-    if confirmacao == "s":
-        produtos.remove(produto)
+    if confirmacao != "s":
+        print("Exclusão cancelada.")
+        return
 
-        salvar_produtos(produtos)
+    sucesso = excluir_produto(id_produto)
 
+    if sucesso:
         print("\nProduto excluído com sucesso!")
     else:
-        print("\nExclusão cancelada.")
+        print("\nNão foi possível excluir o produto.")
 
 
 def main():
+    criar_tabela()
+
     while True:
         print("\n=== Sistema de Gestão de Estoque ===")
         print("1 - Cadastrar produto")
@@ -203,19 +197,19 @@ def main():
         print("4 - Excluir produto")
         print("0 - Sair")
 
-        opcao = input("Escolha uma opção: ")
+        opcao = input("Escolha uma opção: ").strip()
 
         if opcao == "1":
-            cadastrar_produto()
+            cadastrar()
 
         elif opcao == "2":
-            listar_produtos()
+            listar()
 
         elif opcao == "3":
-            editar_produto()
+            editar()
 
         elif opcao == "4":
-            excluir_produto()
+            excluir()
 
         elif opcao == "0":
             print("Sistema encerrado.")
