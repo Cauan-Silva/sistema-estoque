@@ -2,7 +2,7 @@
 
 API REST para gerenciamento de estoque desenvolvida com Python, FastAPI e PostgreSQL.
 
-O projeto permite gerenciar produtos e categorias, consultar estoque e aplicar filtros para facilitar o controle dos itens armazenados.
+O projeto permite gerenciar produtos, categorias, entradas e saídas de estoque, além de consultar históricos e aplicar filtros.
 
 ## Funcionalidades
 
@@ -17,6 +17,13 @@ O projeto permite gerenciar produtos e categorias, consultar estoque e aplicar f
 - Filtro de produtos por categoria
 - Identificação de produtos com estoque baixo
 - Limite configurável para estoque baixo
+- Registro de entrada de estoque
+- Registro de saída de estoque
+- Atualização automática da quantidade do produto
+- Bloqueio de saída com estoque insuficiente
+- Histórico de movimentações
+- Filtro de movimentações por produto
+- Filtro de movimentações por tipo
 - Validação de dados com Pydantic
 - Persistência de dados com PostgreSQL
 - Documentação automática com Swagger
@@ -111,7 +118,7 @@ DB_USER=postgres
 DB_PASSWORD=sua_senha
 ```
 
-O arquivo `.env` não deve ser enviado para o GitHub.
+O arquivo `.env` não deve ser enviado ao GitHub.
 
 ## Executando a API
 
@@ -127,7 +134,7 @@ A API ficará disponível em:
 http://127.0.0.1:8000
 ```
 
-A documentação Swagger:
+Documentação Swagger:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -155,6 +162,14 @@ PUT    /categorias/{id_categoria}
 DELETE /categorias/{id_categoria}
 ```
 
+### Movimentações
+
+```text
+GET  /movimentacoes
+GET  /movimentacoes/{id_movimentacao}
+POST /movimentacoes
+```
+
 ## Cadastro de produto
 
 Exemplo:
@@ -168,9 +183,7 @@ Exemplo:
 }
 ```
 
-O produto é relacionado à tabela de categorias através de `categoria_id`.
-
-## Busca e filtros
+## Busca e filtros de produtos
 
 Buscar produtos pelo nome:
 
@@ -178,7 +191,7 @@ Buscar produtos pelo nome:
 GET /produtos?busca=Intelbras
 ```
 
-Filtrar pela categoria:
+Filtrar por categoria:
 
 ```text
 GET /produtos?categoria_id=1
@@ -190,31 +203,98 @@ Buscar produtos com estoque baixo:
 GET /produtos?estoque_baixo=true
 ```
 
-Definir o limite de estoque baixo:
+Definir limite personalizado:
 
 ```text
 GET /produtos?estoque_baixo=true&limite_estoque=10
 ```
 
-Também é possível combinar os filtros:
+Combinar filtros:
 
 ```text
 GET /produtos?busca=Intelbras&categoria_id=1&estoque_baixo=true&limite_estoque=10
 ```
 
-## Regras de categoria
+## Movimentações de estoque
 
-Cada produto possui uma categoria relacionada através de uma chave estrangeira.
+### Entrada
 
-Uma categoria que possui produtos vinculados não pode ser excluída.
+```json
+{
+  "produto_id": 1,
+  "tipo": "ENTRADA",
+  "quantidade": 10
+}
+```
 
-Ao alterar o nome de uma categoria, os produtos vinculados permanecem associados à mesma categoria.
+A quantidade informada é adicionada ao estoque atual.
+
+### Saída
+
+```json
+{
+  "produto_id": 1,
+  "tipo": "SAIDA",
+  "quantidade": 3
+}
+```
+
+A quantidade é removida do estoque atual.
+
+O sistema impede uma saída maior que a quantidade disponível.
+
+## Histórico de movimentações
+
+Listar todas:
+
+```text
+GET /movimentacoes
+```
+
+Filtrar por produto:
+
+```text
+GET /movimentacoes?produto_id=1
+```
+
+Filtrar somente entradas:
+
+```text
+GET /movimentacoes?tipo=ENTRADA
+```
+
+Filtrar somente saídas:
+
+```text
+GET /movimentacoes?tipo=SAIDA
+```
+
+Combinar filtros:
+
+```text
+GET /movimentacoes?produto_id=1&tipo=SAIDA
+```
+
+## Regras de negócio
+
+Cada produto pertence a uma categoria através de `categoria_id`.
+
+Uma categoria com produtos vinculados não pode ser excluída.
+
+Entradas aumentam automaticamente a quantidade em estoque.
+
+Saídas reduzem automaticamente a quantidade em estoque.
+
+Uma saída não pode deixar o estoque negativo.
+
+Cada entrada ou saída gera um registro no histórico de movimentações.
+
+A atualização do estoque e o registro da movimentação são realizados na mesma transação no PostgreSQL.
 
 ## Próximas funcionalidades
 
-- Movimentações de entrada de estoque
-- Movimentações de saída de estoque
-- Atualização automática da quantidade
-- Histórico de movimentações
+- Filtro de movimentações por período
 - Relatórios de estoque
+- Dashboard
 - Autenticação de usuários
+- Controle de permissões
