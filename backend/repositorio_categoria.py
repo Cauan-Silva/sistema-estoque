@@ -22,6 +22,7 @@ def cadastrar_categoria(nome):
         categoria_id = cursor.fetchone()[0]
 
         conexao.commit()
+
         cursor.close()
         conexao.close()
 
@@ -47,7 +48,9 @@ def listar_categorias():
 
         cursor.execute(
             """
-            SELECT id, nome
+            SELECT
+                id,
+                nome
             FROM categorias
             ORDER BY nome;
             """
@@ -82,7 +85,9 @@ def buscar_categoria(id_categoria):
 
         cursor.execute(
             """
-            SELECT id, nome
+            SELECT
+                id,
+                nome
             FROM categorias
             WHERE id = %s;
             """,
@@ -123,18 +128,36 @@ def editar_categoria(id_categoria, nome):
             WHERE id = %s
             RETURNING id, nome;
             """,
-            (nome, id_categoria)
+            (
+                nome,
+                id_categoria
+            )
         )
 
         registro = cursor.fetchone()
 
         if registro is None:
             conexao.rollback()
+
             cursor.close()
             conexao.close()
+
             return None
 
+        cursor.execute(
+            """
+            UPDATE produtos
+            SET categoria = %s
+            WHERE categoria_id = %s;
+            """,
+            (
+                nome,
+                id_categoria
+            )
+        )
+
         conexao.commit()
+
         cursor.close()
         conexao.close()
 
@@ -171,11 +194,14 @@ def excluir_categoria(id_categoria):
 
         if registro is None:
             conexao.rollback()
+
             cursor.close()
             conexao.close()
+
             return False
 
         conexao.commit()
+
         cursor.close()
         conexao.close()
 

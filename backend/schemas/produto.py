@@ -2,10 +2,22 @@ from pydantic import BaseModel, Field
 
 
 class ProdutoBase(BaseModel):
-    nome: str = Field(min_length=2, max_length=150)
-    categoria: str = Field(min_length=2, max_length=100)
-    quantidade: int = Field(ge=0)
-    preco: float = Field(ge=0)
+    nome: str = Field(
+        min_length=2,
+        max_length=150
+    )
+
+    categoria_id: int = Field(
+        gt=0
+    )
+
+    quantidade: int = Field(
+        ge=0
+    )
+
+    preco: float = Field(
+        ge=0
+    )
 
 
 class ProdutoCriar(ProdutoBase):
@@ -18,6 +30,7 @@ class ProdutoAtualizar(ProdutoBase):
 
 class ProdutoResposta(ProdutoBase):
     id: int
+    categoria: str
 
     class Config:
         from_attributes = True
