@@ -2,7 +2,7 @@
 
 API REST para gerenciamento de estoque desenvolvida com Python, FastAPI e PostgreSQL.
 
-O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque, consultar históricos, aplicar filtros e gerar indicadores e relatórios.
+O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e validar o comportamento da API através de testes automatizados.
 
 ## Funcionalidades
 
@@ -26,6 +26,8 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Cálculo do valor total armazenado
 - Ranking de produtos por valor em estoque
 - Indicadores de entradas e saídas
+- Testes automatizados da API
+- Banco PostgreSQL separado para testes
 - Validação de dados com Pydantic
 - Persistência com PostgreSQL
 - Documentação automática com Swagger
@@ -38,6 +40,8 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Psycopg2
 - Pydantic
 - Uvicorn
+- Pytest
+- HTTPX
 - Git
 - GitHub
 
@@ -58,6 +62,14 @@ sistema-estoque/
 │   │   ├── movimentacao.py
 │   │   ├── produto.py
 │   │   └── relatorio.py
+│   │
+│   ├── tests/
+│   │   ├── conftest.py
+│   │   ├── test_categorias.py
+│   │   ├── test_health.py
+│   │   ├── test_movimentacoes.py
+│   │   ├── test_produtos.py
+│   │   └── test_relatorios.py
 │   │
 │   ├── database.py
 │   ├── main.py
@@ -108,7 +120,7 @@ pip install -r requirements.txt
 
 O projeto utiliza PostgreSQL.
 
-Crie um banco chamado:
+Crie o banco principal:
 
 ```text
 sistema_estoque
@@ -124,11 +136,9 @@ DB_USER=postgres
 DB_PASSWORD=sua_senha
 ```
 
-O arquivo `.env` contém informações locais e não deve ser enviado ao GitHub.
+O arquivo `.env` não deve ser enviado ao GitHub.
 
 ## Executando a API
-
-Com o ambiente virtual ativo:
 
 ```bash
 python -m uvicorn backend.main:app --reload
@@ -196,33 +206,27 @@ Exemplo de cadastro:
 }
 ```
 
-### Busca por nome
+Busca por nome:
 
 ```text
 GET /produtos?busca=Intelbras
 ```
 
-### Filtro por categoria
+Filtro por categoria:
 
 ```text
 GET /produtos?categoria_id=1
 ```
 
-### Estoque baixo
+Estoque baixo:
 
 ```text
-GET /produtos?estoque_baixo=true
-```
-
-Com limite personalizado:
-
-```text
-GET /produtos?estoque_baixo=true&limite_estoque=10
+GET /produtos?estoque_baixo=true&limite_estoque=5
 ```
 
 ## Movimentações de estoque
 
-### Entrada
+Entrada:
 
 ```json
 {
@@ -232,7 +236,7 @@ GET /produtos?estoque_baixo=true&limite_estoque=10
 }
 ```
 
-### Saída
+Saída:
 
 ```json
 {
@@ -242,9 +246,9 @@ GET /produtos?estoque_baixo=true&limite_estoque=10
 }
 ```
 
-O sistema impede saídas maiores que o estoque disponível.
+O sistema impede uma saída maior que o estoque disponível.
 
-A alteração do estoque e o registro da movimentação são realizados dentro da mesma transação no PostgreSQL.
+A alteração do estoque e o registro da movimentação são realizados na mesma transação.
 
 ## Filtros de movimentações
 
@@ -266,74 +270,84 @@ Por período:
 GET /movimentacoes?data_inicio=2026-09-01T00:00:00&data_fim=2026-09-01T23:59:59
 ```
 
-Filtros também podem ser combinados:
-
-```text
-GET /movimentacoes?produto_id=1&tipo=SAIDA&data_inicio=2026-09-01T00:00:00&data_fim=2026-09-30T23:59:59
-```
-
-O sistema rejeita intervalos em que `data_inicio` seja posterior a `data_fim`.
+Filtros podem ser combinados.
 
 ## Relatórios
 
-### Resumo do estoque
+Resumo geral:
 
 ```text
 GET /relatorios/resumo
 ```
 
-O relatório apresenta:
-
-- total de produtos
-- total de categorias
-- quantidade total de unidades
-- produtos com estoque baixo
-- valor total do estoque
-- total de entradas
-- total de saídas
-
-O limite considerado como estoque baixo pode ser configurado:
-
-```text
-GET /relatorios/resumo?limite_estoque=10
-```
-
-### Produtos com maior valor em estoque
+Produtos com maior valor em estoque:
 
 ```text
 GET /relatorios/maior-valor
 ```
 
-O valor de cada produto é calculado através de:
+O valor é calculado por:
 
 ```text
 valor em estoque = quantidade × preço
 ```
 
-É possível definir quantos produtos serão retornados:
+## Testes automatizados
+
+O projeto utiliza Pytest para validar a API.
+
+Os testes utilizam um banco PostgreSQL separado:
 
 ```text
-GET /relatorios/maior-valor?limite=5
+sistema_estoque_test
+```
+
+Isso evita alterar os dados do ambiente principal durante a execução dos testes.
+
+Para executar todos os testes:
+
+```bash
+pytest -v
+```
+
+A suíte cobre atualmente:
+
+- health check
+- CRUD de categorias
+- CRUD de produtos
+- relacionamento produto/categoria
+- filtros de produtos
+- movimentações de entrada
+- movimentações de saída
+- bloqueio de estoque insuficiente
+- filtros de movimentações
+- relatórios
+- validações da API
+
+Resultado atual:
+
+```text
+36 passed
 ```
 
 ## Regras de negócio
 
 - Cada produto pertence a uma categoria.
 - Categorias vinculadas a produtos não podem ser excluídas.
-- Entradas aumentam automaticamente o estoque.
-- Saídas reduzem automaticamente o estoque.
+- Entradas aumentam o estoque.
+- Saídas reduzem o estoque.
 - O estoque não pode ficar negativo.
-- Cada entrada ou saída gera um registro no histórico.
-- Atualização do estoque e criação da movimentação utilizam a mesma transação.
-- Consultas de movimentações podem ser filtradas por produto, tipo e período.
+- Toda movimentação gera histórico.
+- Atualização do estoque e criação da movimentação usam a mesma transação.
+- Movimentações podem ser filtradas por produto, tipo e período.
 - Intervalos de datas inválidos são rejeitados.
 
 ## Próximas funcionalidades
 
+- Paginação
 - Autenticação de usuários
 - Controle de permissões
 - Dashboard
-- Testes automatizados
-- Paginação
 - Logs da aplicação
-- Migrations de banco de dados
+- Migrations com ferramenta dedicada
+- CI/CD para execução automática dos testes
