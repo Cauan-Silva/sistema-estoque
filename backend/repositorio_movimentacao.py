@@ -125,7 +125,9 @@ def registrar_movimentacao(
 
 def listar_movimentacoes(
     produto_id=None,
-    tipo=None
+    tipo=None,
+    data_inicio=None,
+    data_fim=None
 ):
     conexao = conectar()
 
@@ -155,13 +157,33 @@ def listar_movimentacoes(
             condicoes.append(
                 "m.produto_id = %s"
             )
-            parametros.append(produto_id)
+            parametros.append(
+                produto_id
+            )
 
         if tipo is not None:
             condicoes.append(
                 "m.tipo = %s"
             )
-            parametros.append(tipo)
+            parametros.append(
+                tipo
+            )
+
+        if data_inicio is not None:
+            condicoes.append(
+                "m.data_movimentacao >= %s"
+            )
+            parametros.append(
+                data_inicio
+            )
+
+        if data_fim is not None:
+            condicoes.append(
+                "m.data_movimentacao <= %s"
+            )
+            parametros.append(
+                data_fim
+            )
 
         if condicoes:
             consulta += (

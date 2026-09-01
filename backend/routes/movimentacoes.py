@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import (
@@ -39,11 +40,32 @@ def obter_movimentacoes(
         "SAIDA"
     ] | None = Query(
         default=None
+    ),
+    data_inicio: datetime | None = Query(
+        default=None
+    ),
+    data_fim: datetime | None = Query(
+        default=None
     )
 ):
+    if (
+        data_inicio is not None
+        and data_fim is not None
+        and data_inicio > data_fim
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "data_inicio não pode ser "
+                "maior que data_fim."
+            )
+        )
+
     return listar_movimentacoes(
         produto_id=produto_id,
-        tipo=tipo
+        tipo=tipo,
+        data_inicio=data_inicio,
+        data_fim=data_fim
     )
 
 

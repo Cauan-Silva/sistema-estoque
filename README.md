@@ -2,30 +2,32 @@
 
 API REST para gerenciamento de estoque desenvolvida com Python, FastAPI e PostgreSQL.
 
-O projeto permite gerenciar produtos, categorias, entradas e saídas de estoque, além de consultar históricos e aplicar filtros.
+O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque, consultar históricos, aplicar filtros e gerar indicadores e relatórios.
 
 ## Funcionalidades
 
-- Cadastro de produtos
-- Listagem de produtos
-- Consulta de produto por ID
-- Atualização de produtos
-- Exclusão de produtos
+- Cadastro, consulta, atualização e exclusão de produtos
 - Cadastro e gerenciamento de categorias
 - Relacionamento entre produtos e categorias
 - Busca de produtos por nome
 - Filtro de produtos por categoria
-- Identificação de produtos com estoque baixo
+- Controle de estoque baixo
 - Limite configurável para estoque baixo
-- Registro de entrada de estoque
-- Registro de saída de estoque
-- Atualização automática da quantidade do produto
-- Bloqueio de saída com estoque insuficiente
+- Registro de entradas de estoque
+- Registro de saídas de estoque
+- Atualização automática da quantidade disponível
+- Bloqueio de saídas com estoque insuficiente
 - Histórico de movimentações
 - Filtro de movimentações por produto
 - Filtro de movimentações por tipo
+- Filtro de movimentações por período
+- Validação de intervalos de datas
+- Resumo geral do estoque
+- Cálculo do valor total armazenado
+- Ranking de produtos por valor em estoque
+- Indicadores de entradas e saídas
 - Validação de dados com Pydantic
-- Persistência de dados com PostgreSQL
+- Persistência com PostgreSQL
 - Documentação automática com Swagger
 
 ## Tecnologias
@@ -36,7 +38,8 @@ O projeto permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Psycopg2
 - Pydantic
 - Uvicorn
-- Git e GitHub
+- Git
+- GitHub
 
 ## Estrutura do projeto
 
@@ -47,19 +50,22 @@ sistema-estoque/
 │   ├── routes/
 │   │   ├── categorias.py
 │   │   ├── movimentacoes.py
-│   │   └── produtos.py
+│   │   ├── produtos.py
+│   │   └── relatorios.py
 │   │
 │   ├── schemas/
 │   │   ├── categoria.py
 │   │   ├── movimentacao.py
-│   │   └── produto.py
+│   │   ├── produto.py
+│   │   └── relatorio.py
 │   │
 │   ├── database.py
 │   ├── main.py
 │   ├── produto.py
 │   ├── repositorio.py
 │   ├── repositorio_categoria.py
-│   └── repositorio_movimentacao.py
+│   ├── repositorio_movimentacao.py
+│   └── repositorio_relatorio.py
 │
 ├── .gitignore
 ├── README.md
@@ -86,7 +92,7 @@ Crie um ambiente virtual:
 python -m venv .venv
 ```
 
-Ative o ambiente virtual no Windows:
+Ative o ambiente no Windows:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -108,7 +114,7 @@ Crie um banco chamado:
 sistema_estoque
 ```
 
-Depois crie um arquivo `.env` na raiz do projeto:
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 DB_HOST=localhost
@@ -118,7 +124,7 @@ DB_USER=postgres
 DB_PASSWORD=sua_senha
 ```
 
-O arquivo `.env` não deve ser enviado ao GitHub.
+O arquivo `.env` contém informações locais e não deve ser enviado ao GitHub.
 
 ## Executando a API
 
@@ -128,13 +134,13 @@ Com o ambiente virtual ativo:
 python -m uvicorn backend.main:app --reload
 ```
 
-A API ficará disponível em:
+API:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Documentação Swagger:
+Swagger:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -170,9 +176,16 @@ GET  /movimentacoes/{id_movimentacao}
 POST /movimentacoes
 ```
 
-## Cadastro de produto
+### Relatórios
 
-Exemplo:
+```text
+GET /relatorios/resumo
+GET /relatorios/maior-valor
+```
+
+## Produtos
+
+Exemplo de cadastro:
 
 ```json
 {
@@ -183,36 +196,28 @@ Exemplo:
 }
 ```
 
-## Busca e filtros de produtos
-
-Buscar produtos pelo nome:
+### Busca por nome
 
 ```text
 GET /produtos?busca=Intelbras
 ```
 
-Filtrar por categoria:
+### Filtro por categoria
 
 ```text
 GET /produtos?categoria_id=1
 ```
 
-Buscar produtos com estoque baixo:
+### Estoque baixo
 
 ```text
 GET /produtos?estoque_baixo=true
 ```
 
-Definir limite personalizado:
+Com limite personalizado:
 
 ```text
 GET /produtos?estoque_baixo=true&limite_estoque=10
-```
-
-Combinar filtros:
-
-```text
-GET /produtos?busca=Intelbras&categoria_id=1&estoque_baixo=true&limite_estoque=10
 ```
 
 ## Movimentações de estoque
@@ -227,8 +232,6 @@ GET /produtos?busca=Intelbras&categoria_id=1&estoque_baixo=true&limite_estoque=1
 }
 ```
 
-A quantidade informada é adicionada ao estoque atual.
-
 ### Saída
 
 ```json
@@ -239,62 +242,98 @@ A quantidade informada é adicionada ao estoque atual.
 }
 ```
 
-A quantidade é removida do estoque atual.
+O sistema impede saídas maiores que o estoque disponível.
 
-O sistema impede uma saída maior que a quantidade disponível.
+A alteração do estoque e o registro da movimentação são realizados dentro da mesma transação no PostgreSQL.
 
-## Histórico de movimentações
+## Filtros de movimentações
 
-Listar todas:
-
-```text
-GET /movimentacoes
-```
-
-Filtrar por produto:
+Por produto:
 
 ```text
 GET /movimentacoes?produto_id=1
 ```
 
-Filtrar somente entradas:
+Por tipo:
 
 ```text
 GET /movimentacoes?tipo=ENTRADA
 ```
 
-Filtrar somente saídas:
+Por período:
 
 ```text
-GET /movimentacoes?tipo=SAIDA
+GET /movimentacoes?data_inicio=2026-09-01T00:00:00&data_fim=2026-09-01T23:59:59
 ```
 
-Combinar filtros:
+Filtros também podem ser combinados:
 
 ```text
-GET /movimentacoes?produto_id=1&tipo=SAIDA
+GET /movimentacoes?produto_id=1&tipo=SAIDA&data_inicio=2026-09-01T00:00:00&data_fim=2026-09-30T23:59:59
+```
+
+O sistema rejeita intervalos em que `data_inicio` seja posterior a `data_fim`.
+
+## Relatórios
+
+### Resumo do estoque
+
+```text
+GET /relatorios/resumo
+```
+
+O relatório apresenta:
+
+- total de produtos
+- total de categorias
+- quantidade total de unidades
+- produtos com estoque baixo
+- valor total do estoque
+- total de entradas
+- total de saídas
+
+O limite considerado como estoque baixo pode ser configurado:
+
+```text
+GET /relatorios/resumo?limite_estoque=10
+```
+
+### Produtos com maior valor em estoque
+
+```text
+GET /relatorios/maior-valor
+```
+
+O valor de cada produto é calculado através de:
+
+```text
+valor em estoque = quantidade × preço
+```
+
+É possível definir quantos produtos serão retornados:
+
+```text
+GET /relatorios/maior-valor?limite=5
 ```
 
 ## Regras de negócio
 
-Cada produto pertence a uma categoria através de `categoria_id`.
-
-Uma categoria com produtos vinculados não pode ser excluída.
-
-Entradas aumentam automaticamente a quantidade em estoque.
-
-Saídas reduzem automaticamente a quantidade em estoque.
-
-Uma saída não pode deixar o estoque negativo.
-
-Cada entrada ou saída gera um registro no histórico de movimentações.
-
-A atualização do estoque e o registro da movimentação são realizados na mesma transação no PostgreSQL.
+- Cada produto pertence a uma categoria.
+- Categorias vinculadas a produtos não podem ser excluídas.
+- Entradas aumentam automaticamente o estoque.
+- Saídas reduzem automaticamente o estoque.
+- O estoque não pode ficar negativo.
+- Cada entrada ou saída gera um registro no histórico.
+- Atualização do estoque e criação da movimentação utilizam a mesma transação.
+- Consultas de movimentações podem ser filtradas por produto, tipo e período.
+- Intervalos de datas inválidos são rejeitados.
 
 ## Próximas funcionalidades
 
-- Filtro de movimentações por período
-- Relatórios de estoque
-- Dashboard
 - Autenticação de usuários
 - Controle de permissões
+- Dashboard
+- Testes automatizados
+- Paginação
+- Logs da aplicação
+- Migrations de banco de dados
