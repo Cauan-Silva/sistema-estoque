@@ -127,7 +127,9 @@ def listar_movimentacoes(
     produto_id=None,
     tipo=None,
     data_inicio=None,
-    data_fim=None
+    data_fim=None,
+    pagina=1,
+    tamanho=10
 ):
     conexao = conectar()
 
@@ -157,6 +159,7 @@ def listar_movimentacoes(
             condicoes.append(
                 "m.produto_id = %s"
             )
+
             parametros.append(
                 produto_id
             )
@@ -165,6 +168,7 @@ def listar_movimentacoes(
             condicoes.append(
                 "m.tipo = %s"
             )
+
             parametros.append(
                 tipo
             )
@@ -173,6 +177,7 @@ def listar_movimentacoes(
             condicoes.append(
                 "m.data_movimentacao >= %s"
             )
+
             parametros.append(
                 data_inicio
             )
@@ -181,6 +186,7 @@ def listar_movimentacoes(
             condicoes.append(
                 "m.data_movimentacao <= %s"
             )
+
             parametros.append(
                 data_fim
             )
@@ -191,11 +197,25 @@ def listar_movimentacoes(
                 + " AND ".join(condicoes)
             )
 
+        offset = (
+            pagina - 1
+        ) * tamanho
+
         consulta += """
             ORDER BY
                 m.data_movimentacao DESC,
-                m.id DESC;
+                m.id DESC
+            LIMIT %s
+            OFFSET %s;
         """
+
+        parametros.append(
+            tamanho
+        )
+
+        parametros.append(
+            offset
+        )
 
         cursor.execute(
             consulta,

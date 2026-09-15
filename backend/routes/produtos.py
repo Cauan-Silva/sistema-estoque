@@ -47,13 +47,24 @@ def obter_produtos(
     limite_estoque: int = Query(
         default=5,
         ge=0
+    ),
+    pagina: int = Query(
+        default=1,
+        ge=1
+    ),
+    tamanho: int = Query(
+        default=10,
+        ge=1,
+        le=100
     )
 ):
     return listar_produtos(
         busca=busca,
         categoria_id=categoria_id,
         estoque_baixo=estoque_baixo,
-        limite_estoque=limite_estoque
+        limite_estoque=limite_estoque,
+        pagina=pagina,
+        tamanho=tamanho
     )
 
 

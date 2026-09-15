@@ -46,6 +46,15 @@ def obter_movimentacoes(
     ),
     data_fim: datetime | None = Query(
         default=None
+    ),
+    pagina: int = Query(
+        default=1,
+        ge=1
+    ),
+    tamanho: int = Query(
+        default=10,
+        ge=1,
+        le=100
     )
 ):
     if (
@@ -65,7 +74,9 @@ def obter_movimentacoes(
         produto_id=produto_id,
         tipo=tipo,
         data_inicio=data_inicio,
-        data_fim=data_fim
+        data_fim=data_fim,
+        pagina=pagina,
+        tamanho=tamanho
     )
 
 

@@ -83,7 +83,9 @@ def listar_produtos(
     busca=None,
     categoria_id=None,
     estoque_baixo=False,
-    limite_estoque=5
+    limite_estoque=5,
+    pagina=1,
+    tamanho=10
 ):
     conexao = conectar()
 
@@ -142,7 +144,23 @@ def listar_produtos(
                 + " AND ".join(condicoes)
             )
 
-        consulta += " ORDER BY p.id;"
+        offset = (
+            pagina - 1
+        ) * tamanho
+
+        consulta += """
+            ORDER BY p.id
+            LIMIT %s
+            OFFSET %s;
+        """
+
+        parametros.append(
+            tamanho
+        )
+
+        parametros.append(
+            offset
+        )
 
         cursor.execute(
             consulta,

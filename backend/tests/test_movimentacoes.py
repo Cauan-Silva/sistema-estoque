@@ -33,6 +33,26 @@ def criar_produto(
     return resposta.json()["id"]
 
 
+def criar_movimentacao(
+    client,
+    produto_id,
+    tipo="ENTRADA",
+    quantidade=1
+):
+    resposta = client.post(
+        "/movimentacoes",
+        json={
+            "produto_id": produto_id,
+            "tipo": tipo,
+            "quantidade": quantidade
+        }
+    )
+
+    assert resposta.status_code == 201
+
+    return resposta
+
+
 def test_registrar_entrada(client):
     categoria_id = criar_categoria(client)
 
@@ -159,22 +179,18 @@ def test_listar_movimentacoes(client):
         quantidade=10
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_id,
-            "tipo": "ENTRADA",
-            "quantidade": 5
-        }
+    criar_movimentacao(
+        client,
+        produto_id,
+        tipo="ENTRADA",
+        quantidade=5
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_id,
-            "tipo": "SAIDA",
-            "quantidade": 2
-        }
+    criar_movimentacao(
+        client,
+        produto_id,
+        tipo="SAIDA",
+        quantidade=2
     )
 
     resposta = client.get(
@@ -196,13 +212,11 @@ def test_buscar_movimentacao_por_id(client):
         categoria_id
     )
 
-    criacao = client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_id,
-            "tipo": "ENTRADA",
-            "quantidade": 5
-        }
+    criacao = criar_movimentacao(
+        client,
+        produto_id,
+        tipo="ENTRADA",
+        quantidade=5
     )
 
     movimentacao_id = criacao.json()["id"]
@@ -236,22 +250,18 @@ def test_filtro_movimentacao_por_tipo(client):
         quantidade=20
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_id,
-            "tipo": "ENTRADA",
-            "quantidade": 5
-        }
+    criar_movimentacao(
+        client,
+        produto_id,
+        tipo="ENTRADA",
+        quantidade=5
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_id,
-            "tipo": "SAIDA",
-            "quantidade": 3
-        }
+    criar_movimentacao(
+        client,
+        produto_id,
+        tipo="SAIDA",
+        quantidade=3
     )
 
     resposta = client.get(
@@ -284,22 +294,18 @@ def test_filtro_movimentacao_por_produto(client):
         nome="Produto 2"
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_1,
-            "tipo": "ENTRADA",
-            "quantidade": 5
-        }
+    criar_movimentacao(
+        client,
+        produto_1,
+        tipo="ENTRADA",
+        quantidade=5
     )
 
-    client.post(
-        "/movimentacoes",
-        json={
-            "produto_id": produto_2,
-            "tipo": "ENTRADA",
-            "quantidade": 5
-        }
+    criar_movimentacao(
+        client,
+        produto_2,
+        tipo="ENTRADA",
+        quantidade=5
     )
 
     resposta = client.get(
@@ -353,6 +359,187 @@ def test_validacao_quantidade_movimentacao(
             "produto_id": produto_id,
             "tipo": "ENTRADA",
             "quantidade": 0
+        }
+    )
+
+    assert resposta.status_code == 422
+
+
+def test_paginacao_movimentacoes_primeira_pagina(
+    client
+):
+    categoria_id = criar_categoria(client)
+
+    produto_id = criar_produto(
+        client,
+        categoria_id,
+        quantidade=10
+    )
+
+    for quantidade in range(1, 6):
+        criar_movimentacao(
+            client,
+            produto_id,
+            tipo="ENTRADA",
+            quantidade=quantidade
+        )
+
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "pagina": 1,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+
+    assert dados[0]["quantidade"] == 5
+    assert dados[1]["quantidade"] == 4
+
+
+def test_paginacao_movimentacoes_segunda_pagina(
+    client
+):
+    categoria_id = criar_categoria(client)
+
+    produto_id = criar_produto(
+        client,
+        categoria_id,
+        quantidade=10
+    )
+
+    for quantidade in range(1, 6):
+        criar_movimentacao(
+            client,
+            produto_id,
+            tipo="ENTRADA",
+            quantidade=quantidade
+        )
+
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "pagina": 2,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+
+    assert dados[0]["quantidade"] == 3
+    assert dados[1]["quantidade"] == 2
+
+
+def test_paginacao_movimentacoes_ultima_pagina(
+    client
+):
+    categoria_id = criar_categoria(client)
+
+    produto_id = criar_produto(
+        client,
+        categoria_id,
+        quantidade=10
+    )
+
+    for quantidade in range(1, 6):
+        criar_movimentacao(
+            client,
+            produto_id,
+            tipo="ENTRADA",
+            quantidade=quantidade
+        )
+
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "pagina": 3,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 1
+    assert dados[0]["quantidade"] == 1
+
+
+def test_paginacao_movimentacoes_com_filtro(
+    client
+):
+    categoria_id = criar_categoria(client)
+
+    produto_id = criar_produto(
+        client,
+        categoria_id,
+        quantidade=20
+    )
+
+    for quantidade in range(1, 5):
+        criar_movimentacao(
+            client,
+            produto_id,
+            tipo="ENTRADA",
+            quantidade=quantidade
+        )
+
+    criar_movimentacao(
+        client,
+        produto_id,
+        tipo="SAIDA",
+        quantidade=1
+    )
+
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "tipo": "ENTRADA",
+            "pagina": 2,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+
+    assert dados[0]["tipo"] == "ENTRADA"
+    assert dados[1]["tipo"] == "ENTRADA"
+
+    assert dados[0]["quantidade"] == 2
+    assert dados[1]["quantidade"] == 1
+
+
+def test_validacao_pagina_movimentacoes(client):
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "pagina": 0
+        }
+    )
+
+    assert resposta.status_code == 422
+
+
+def test_validacao_tamanho_pagina_movimentacoes(
+    client
+):
+    resposta = client.get(
+        "/movimentacoes",
+        params={
+            "tamanho": 101
         }
     )
 

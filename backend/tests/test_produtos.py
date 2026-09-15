@@ -299,3 +299,147 @@ def test_validacao_produto(client):
     )
 
     assert resposta.status_code == 422
+
+
+def test_paginacao_produtos_primeira_pagina(client):
+    categoria_id = criar_categoria(client)
+
+    for numero in range(1, 6):
+        criar_produto(
+            client,
+            categoria_id,
+            nome=f"Produto {numero}"
+        )
+
+    resposta = client.get(
+        "/produtos",
+        params={
+            "pagina": 1,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+    assert dados[0]["nome"] == "Produto 1"
+    assert dados[1]["nome"] == "Produto 2"
+
+
+def test_paginacao_produtos_segunda_pagina(client):
+    categoria_id = criar_categoria(client)
+
+    for numero in range(1, 6):
+        criar_produto(
+            client,
+            categoria_id,
+            nome=f"Produto {numero}"
+        )
+
+    resposta = client.get(
+        "/produtos",
+        params={
+            "pagina": 2,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+    assert dados[0]["nome"] == "Produto 3"
+    assert dados[1]["nome"] == "Produto 4"
+
+
+def test_paginacao_produtos_ultima_pagina(client):
+    categoria_id = criar_categoria(client)
+
+    for numero in range(1, 6):
+        criar_produto(
+            client,
+            categoria_id,
+            nome=f"Produto {numero}"
+        )
+
+    resposta = client.get(
+        "/produtos",
+        params={
+            "pagina": 3,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 1
+    assert dados[0]["nome"] == "Produto 5"
+
+
+def test_paginacao_produtos_com_filtro(client):
+    categoria_switch = criar_categoria(
+        client,
+        "Switches"
+    )
+
+    categoria_roteador = criar_categoria(
+        client,
+        "Roteadores"
+    )
+
+    for numero in range(1, 5):
+        criar_produto(
+            client,
+            categoria_switch,
+            nome=f"Switch {numero}"
+        )
+
+    criar_produto(
+        client,
+        categoria_roteador,
+        nome="Roteador 1"
+    )
+
+    resposta = client.get(
+        "/produtos",
+        params={
+            "categoria_id": categoria_switch,
+            "pagina": 2,
+            "tamanho": 2
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert len(dados) == 2
+    assert dados[0]["nome"] == "Switch 3"
+    assert dados[1]["nome"] == "Switch 4"
+
+
+def test_validacao_pagina_produtos(client):
+    resposta = client.get(
+        "/produtos",
+        params={
+            "pagina": 0
+        }
+    )
+
+    assert resposta.status_code == 422
+
+
+def test_validacao_tamanho_pagina_produtos(client):
+    resposta = client.get(
+        "/produtos",
+        params={
+            "tamanho": 101
+        }
+    )
+
+    assert resposta.status_code == 422
