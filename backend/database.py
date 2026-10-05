@@ -123,6 +123,20 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(150) NOT NULL,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                senha_hash VARCHAR(255) NOT NULL,
+                ativo BOOLEAN NOT NULL DEFAULT TRUE,
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()
