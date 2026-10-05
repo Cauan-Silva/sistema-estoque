@@ -33,7 +33,8 @@ def limpar_banco():
         TRUNCATE TABLE
             movimentacoes,
             produtos,
-            categorias
+            categorias,
+            usuarios
         RESTART IDENTITY CASCADE;
         """
     )
