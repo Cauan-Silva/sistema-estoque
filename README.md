@@ -2,7 +2,9 @@
 
 API REST para gerenciamento de estoque desenvolvida com Python, FastAPI e PostgreSQL.
 
-O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e validar o comportamento da API através de testes automatizados.
+O sistema permite gerenciar produtos e categorias, controlar entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e validar o comportamento da API através de testes automatizados.
+
+O projeto também possui paginação, banco de dados separado para testes e integração contínua com GitHub Actions.
 
 ## Funcionalidades
 
@@ -13,6 +15,7 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Filtro de produtos por categoria
 - Controle de estoque baixo
 - Limite configurável para estoque baixo
+- Paginação de produtos
 - Registro de entradas de estoque
 - Registro de saídas de estoque
 - Atualização automática da quantidade disponível
@@ -21,6 +24,7 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Filtro de movimentações por produto
 - Filtro de movimentações por tipo
 - Filtro de movimentações por período
+- Paginação de movimentações
 - Validação de intervalos de datas
 - Resumo geral do estoque
 - Cálculo do valor total armazenado
@@ -28,6 +32,7 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - Indicadores de entradas e saídas
 - Testes automatizados da API
 - Banco PostgreSQL separado para testes
+- Integração contínua com GitHub Actions
 - Validação de dados com Pydantic
 - Persistência com PostgreSQL
 - Documentação automática com Swagger
@@ -44,11 +49,16 @@ O sistema permite gerenciar produtos, categorias, entradas e saídas de estoque,
 - HTTPX
 - Git
 - GitHub
+- GitHub Actions
 
 ## Estrutura do projeto
 
 ```text
 sistema-estoque/
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 │
 ├── backend/
 │   ├── routes/
@@ -224,6 +234,14 @@ Estoque baixo:
 GET /produtos?estoque_baixo=true&limite_estoque=5
 ```
 
+Paginação:
+
+```text
+GET /produtos?pagina=1&tamanho=10
+```
+
+Os filtros podem ser combinados com os parâmetros de paginação.
+
 ## Movimentações de estoque
 
 Entrada:
@@ -270,7 +288,13 @@ Por período:
 GET /movimentacoes?data_inicio=2026-09-01T00:00:00&data_fim=2026-09-01T23:59:59
 ```
 
-Filtros podem ser combinados.
+Paginação:
+
+```text
+GET /movimentacoes?pagina=1&tamanho=10
+```
+
+Os filtros podem ser combinados com a paginação.
 
 ## Relatórios
 
@@ -294,7 +318,7 @@ valor em estoque = quantidade × preço
 
 ## Testes automatizados
 
-O projeto utiliza Pytest para validar a API.
+O projeto utiliza Pytest para validar o comportamento da API.
 
 Os testes utilizam um banco PostgreSQL separado:
 
@@ -317,17 +341,42 @@ A suíte cobre atualmente:
 - CRUD de produtos
 - relacionamento produto/categoria
 - filtros de produtos
+- paginação de produtos
 - movimentações de entrada
 - movimentações de saída
 - bloqueio de estoque insuficiente
 - filtros de movimentações
+- paginação de movimentações
 - relatórios
 - validações da API
 
-Resultado atual:
+Último resultado validado localmente:
 
 ```text
-36 passed
+48 passed
+```
+
+## Integração contínua
+
+O projeto utiliza GitHub Actions para executar automaticamente a suíte de testes.
+
+O workflow é executado em:
+
+- pushes para a branch `main`
+- pull requests direcionados para a branch `main`
+
+Durante a execução, o GitHub Actions:
+
+1. prepara o ambiente Python;
+2. inicia um serviço PostgreSQL;
+3. instala as dependências do projeto;
+4. configura o banco de testes;
+5. executa a suíte com Pytest.
+
+O workflow está localizado em:
+
+```text
+.github/workflows/tests.yml
 ```
 
 ## Regras de negócio
@@ -341,13 +390,13 @@ Resultado atual:
 - Atualização do estoque e criação da movimentação usam a mesma transação.
 - Movimentações podem ser filtradas por produto, tipo e período.
 - Intervalos de datas inválidos são rejeitados.
+- Produtos e movimentações possuem paginação.
 
 ## Próximas funcionalidades
 
-- Paginação
 - Autenticação de usuários
 - Controle de permissões
 - Dashboard
 - Logs da aplicação
 - Migrations com ferramenta dedicada
-- CI/CD para execução automática dos testes
+- Dockerização da aplicação
