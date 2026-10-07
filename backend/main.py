@@ -19,6 +19,9 @@ from backend.routes.relatorios import (
 from backend.routes.usuarios import (
     router as usuarios_router
 )
+from backend.routes.fornecedores import (
+    router as fornecedores_router
+)
 
 
 @asynccontextmanager
@@ -33,7 +36,7 @@ app = FastAPI(
     description=(
         "API REST para gerenciamento de estoque, "
         "produtos, categorias, movimentações, "
-        "relatórios e usuários"
+        "relatórios, usuários e fornecedores"
     ),
     version="1.0.0",
     lifespan=lifespan
@@ -61,3 +64,4 @@ app.include_router(categorias_router)
 app.include_router(movimentacoes_router)
 app.include_router(relatorios_router)
 app.include_router(usuarios_router)
+app.include_router(fornecedores_router)

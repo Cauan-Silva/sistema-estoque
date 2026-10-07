@@ -1,12 +1,14 @@
 # Sistema de Gestão de Estoque
 
-API REST para gerenciamento de estoque desenvolvida com Python, FastAPI e PostgreSQL.
+API REST para gerenciamento de estoque, fornecedores e processos relacionados, desenvolvida com Python, FastAPI e PostgreSQL.
 
-O sistema permite gerenciar produtos e categorias, controlar entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e validar o comportamento da API através de testes automatizados.
+O sistema permite gerenciar produtos e categorias, controlar entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e cadastrar fornecedores.
 
-O projeto também possui paginação, banco de dados separado para testes e integração contínua com GitHub Actions.
+O projeto também possui autenticação de usuários com JWT, senhas protegidas com bcrypt, rotas autenticadas, paginação, banco PostgreSQL separado para testes e integração contínua com GitHub Actions.
 
 ## Funcionalidades
+
+### Estoque
 
 - Cadastro, consulta, atualização e exclusão de produtos
 - Cadastro e gerenciamento de categorias
@@ -26,11 +28,43 @@ O projeto também possui paginação, banco de dados separado para testes e inte
 - Filtro de movimentações por período
 - Paginação de movimentações
 - Validação de intervalos de datas
+
+### Relatórios
+
 - Resumo geral do estoque
 - Cálculo do valor total armazenado
 - Ranking de produtos por valor em estoque
 - Indicadores de entradas e saídas
-- Testes automatizados da API
+
+### Usuários e autenticação
+
+- Cadastro de usuários
+- Normalização de e-mail
+- Proteção de senhas com bcrypt
+- Login com e-mail e senha
+- Autenticação utilizando JWT
+- Tokens de acesso com tempo de expiração
+- Autenticação via Bearer Token
+- Identificação do usuário pelo ID armazenado no token
+- Endpoint para consultar o usuário autenticado
+- Bloqueio de acesso com token inválido
+- Suporte a usuários ativos e inativos
+- Rotas protegidas por autenticação
+
+### Fornecedores
+
+- Cadastro de fornecedores
+- Consulta de fornecedor por ID
+- Listagem de fornecedores
+- Dados de contato, telefone e e-mail
+- CPF/CNPJ do fornecedor
+- Site do fornecedor
+- Controle de fornecedor ativo/inativo
+- API de fornecedores protegida por JWT
+
+### Qualidade e infraestrutura
+
+- Testes automatizados com Pytest
 - Banco PostgreSQL separado para testes
 - Integração contínua com GitHub Actions
 - Validação de dados com Pydantic
@@ -47,6 +81,9 @@ O projeto também possui paginação, banco de dados separado para testes e inte
 - Uvicorn
 - Pytest
 - HTTPX
+- bcrypt
+- python-jose
+- JWT
 - Git
 - GitHub
 - GitHub Actions
@@ -63,32 +100,44 @@ sistema-estoque/
 ├── backend/
 │   ├── routes/
 │   │   ├── categorias.py
+│   │   ├── fornecedores.py
 │   │   ├── movimentacoes.py
 │   │   ├── produtos.py
-│   │   └── relatorios.py
+│   │   ├── relatorios.py
+│   │   └── usuarios.py
 │   │
 │   ├── schemas/
 │   │   ├── categoria.py
+│   │   ├── fornecedor.py
 │   │   ├── movimentacao.py
 │   │   ├── produto.py
-│   │   └── relatorio.py
+│   │   ├── relatorio.py
+│   │   └── usuario.py
 │   │
 │   ├── tests/
 │   │   ├── conftest.py
+│   │   ├── test_autenticacao.py
+│   │   ├── test_autorizacao.py
 │   │   ├── test_categorias.py
+│   │   ├── test_fornecedores.py
 │   │   ├── test_health.py
 │   │   ├── test_movimentacoes.py
 │   │   ├── test_produtos.py
-│   │   └── test_relatorios.py
+│   │   ├── test_relatorios.py
+│   │   └── test_usuarios.py
 │   │
+│   ├── autenticacao.py
 │   ├── database.py
 │   ├── main.py
 │   ├── produto.py
 │   ├── repositorio.py
 │   ├── repositorio_categoria.py
+│   ├── repositorio_fornecedor.py
 │   ├── repositorio_movimentacao.py
-│   └── repositorio_relatorio.py
+│   ├── repositorio_relatorio.py
+│   └── repositorio_usuario.py
 │
+├── .env
 ├── .gitignore
 ├── README.md
 └── requirements.txt
@@ -136,6 +185,12 @@ Crie o banco principal:
 sistema_estoque
 ```
 
+Crie também um banco separado para os testes:
+
+```text
+sistema_estoque_test
+```
+
 Crie um arquivo `.env` na raiz do projeto:
 
 ```env
@@ -144,9 +199,17 @@ DB_PORT=5432
 DB_NAME=sistema_estoque
 DB_USER=postgres
 DB_PASSWORD=sua_senha
+
+JWT_SECRET_KEY=sua_chave_secreta
 ```
 
-O arquivo `.env` não deve ser enviado ao GitHub.
+Uma chave JWT segura pode ser gerada com:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+O arquivo `.env` contém informações sensíveis e não deve ser enviado ao GitHub.
 
 ## Executando a API
 
@@ -202,6 +265,26 @@ POST /movimentacoes
 GET /relatorios/resumo
 GET /relatorios/maior-valor
 ```
+
+### Usuários
+
+```text
+POST /usuarios
+POST /usuarios/login
+GET  /usuarios/me
+```
+
+O endpoint `/usuarios/me` exige autenticação.
+
+### Fornecedores
+
+```text
+POST /fornecedores
+GET  /fornecedores
+GET  /fornecedores/{fornecedor_id}
+```
+
+As rotas de fornecedores exigem autenticação com JWT.
 
 ## Produtos
 
@@ -316,9 +399,96 @@ O valor é calculado por:
 valor em estoque = quantidade × preço
 ```
 
+## Autenticação
+
+### Cadastro de usuário
+
+```text
+POST /usuarios
+```
+
+Exemplo:
+
+```json
+{
+  "nome": "Usuario Teste",
+  "email": "usuario@teste.com",
+  "senha": "senha123"
+}
+```
+
+As senhas não são armazenadas em texto puro. O sistema utiliza bcrypt para gerar o hash antes da persistência.
+
+### Login
+
+```text
+POST /usuarios/login
+```
+
+Exemplo:
+
+```json
+{
+  "email": "usuario@teste.com",
+  "senha": "senha123"
+}
+```
+
+Em caso de sucesso, a API retorna um token JWT:
+
+```json
+{
+  "access_token": "token_jwt",
+  "token_type": "bearer"
+}
+```
+
+O token possui tempo de expiração e utiliza o ID do usuário no campo `sub`.
+
+### Usuário autenticado
+
+```text
+GET /usuarios/me
+```
+
+A requisição deve utilizar:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+Tokens inválidos ou expirados são rejeitados pela API.
+
+## Fornecedores
+
+O módulo de fornecedores é a primeira etapa da expansão do sistema para gerenciamento de compras e cotações.
+
+Exemplo de fornecedor:
+
+```json
+{
+  "nome": "Fornecedor Teste",
+  "cpf_cnpj": "12345678000199",
+  "contato": "João",
+  "telefone": "48999999999",
+  "email": "contato@fornecedor.com",
+  "site": "https://fornecedor.com"
+}
+```
+
+Rotas disponíveis:
+
+```text
+POST /fornecedores
+GET  /fornecedores
+GET  /fornecedores/{fornecedor_id}
+```
+
+Todas essas rotas exigem autenticação.
+
 ## Testes automatizados
 
-O projeto utiliza Pytest para validar o comportamento da API.
+O projeto utiliza Pytest para validar o comportamento da aplicação.
 
 Os testes utilizam um banco PostgreSQL separado:
 
@@ -331,7 +501,7 @@ Isso evita alterar os dados do ambiente principal durante a execução dos teste
 Para executar todos os testes:
 
 ```bash
-pytest -v
+python -m pytest -v
 ```
 
 A suíte cobre atualmente:
@@ -342,18 +512,23 @@ A suíte cobre atualmente:
 - relacionamento produto/categoria
 - filtros de produtos
 - paginação de produtos
-- movimentações de entrada
-- movimentações de saída
+- movimentações de entrada e saída
 - bloqueio de estoque insuficiente
-- filtros de movimentações
-- paginação de movimentações
+- filtros e paginação de movimentações
 - relatórios
+- cadastro de usuários
+- hash e verificação de senhas
+- login
+- geração e validação de JWT
+- autorização com Bearer Token
+- acesso ao usuário autenticado
+- repositório de fornecedores
 - validações da API
 
 Último resultado validado localmente:
 
 ```text
-48 passed
+75 passed
 ```
 
 ## Integração contínua
@@ -369,9 +544,10 @@ Durante a execução, o GitHub Actions:
 
 1. prepara o ambiente Python;
 2. inicia um serviço PostgreSQL;
-3. instala as dependências do projeto;
-4. configura o banco de testes;
-5. executa a suíte com Pytest.
+3. instala as dependências;
+4. configura as variáveis do ambiente de testes;
+5. configura uma chave JWT exclusiva para o CI;
+6. executa a suíte com Pytest.
 
 O workflow está localizado em:
 
@@ -391,12 +567,31 @@ O workflow está localizado em:
 - Movimentações podem ser filtradas por produto, tipo e período.
 - Intervalos de datas inválidos são rejeitados.
 - Produtos e movimentações possuem paginação.
+- Senhas são armazenadas utilizando hash bcrypt.
+- Login inválido não informa se o erro ocorreu no e-mail ou na senha.
+- Tokens JWT possuem tempo de expiração.
+- Usuários inativos não podem acessar rotas autenticadas.
+- Rotas de fornecedores exigem autenticação.
 
 ## Próximas funcionalidades
 
-- Autenticação de usuários
-- Controle de permissões
-- Dashboard
-- Logs da aplicação
-- Migrations com ferramenta dedicada
-- Dockerização da aplicação
+O projeto está evoluindo do gerenciamento de estoque para um fluxo integrado de compras.
+
+Próximas etapas:
+
+1. CRUD completo de fornecedores
+2. Solicitações de compra
+3. Registro de cotações por fornecedor
+4. Comparação de preços, frete e prazo
+5. Aprovação de compras
+6. Registro da compra realizada
+7. Recebimento de materiais
+8. Entrada automática dos materiais no estoque
+9. Histórico e relatórios de compras
+10. Dashboard
+11. Exportação de dados para Excel/PDF
+12. Controle de permissões por usuário
+13. Logs da aplicação
+14. Migrations com ferramenta dedicada
+15. Dockerização da aplicação
+16. Integração futura com APIs para consulta de preços
