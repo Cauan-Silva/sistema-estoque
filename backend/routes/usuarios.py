@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.autenticacao import criar_token_acesso
+from backend.autenticacao import (
+    criar_token_acesso,
+    obter_usuario_atual,
+)
 from backend.repositorio_usuario import (
     buscar_usuario_por_email,
     cadastrar_usuario,
@@ -93,4 +96,20 @@ def login(usuario_login: UsuarioLogin):
     return {
         "access_token": token,
         "token_type": "bearer"
+    }
+
+
+@router.get(
+    "/me",
+    response_model=UsuarioResposta
+)
+def usuario_atual(
+    usuario=Depends(obter_usuario_atual)
+):
+    return {
+        "id": usuario[0],
+        "nome": usuario[1],
+        "email": usuario[2],
+        "ativo": usuario[4],
+        "data_criacao": usuario[5]
     }
