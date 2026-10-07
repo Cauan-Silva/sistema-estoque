@@ -1,5 +1,6 @@
 import bcrypt
 
+from backend.autenticacao import validar_token_acesso
 from backend.repositorio_usuario import (
     buscar_usuario_por_email,
     cadastrar_usuario,
@@ -64,7 +65,9 @@ def test_buscar_usuario_por_email():
         senha="senha123"
     )
 
-    usuario = buscar_usuario_por_email("busca@teste.com")
+    usuario = buscar_usuario_por_email(
+        "busca@teste.com"
+    )
 
     assert usuario is not None
     assert usuario[1] == "Usuario Busca"
@@ -208,6 +211,8 @@ def test_login_com_sucesso(client):
 
     assert cadastro.status_code == 201
 
+    usuario_id = cadastro.json()["id"]
+
     resposta = client.post(
         "/usuarios/login",
         json={
@@ -220,11 +225,19 @@ def test_login_com_sucesso(client):
 
     dados = resposta.json()
 
-    assert dados["nome"] == "Usuario Login"
-    assert dados["email"] == "login@teste.com"
-    assert dados["ativo"] is True
-    assert "senha" not in dados
-    assert "senha_hash" not in dados
+    assert "access_token" in dados
+    assert dados["token_type"] == "bearer"
+
+    token = dados["access_token"]
+
+    assert isinstance(token, str)
+    assert token != ""
+
+    dados_token = validar_token_acesso(token)
+
+    assert dados_token is not None
+    assert dados_token["usuario_id"] == usuario_id
+    assert dados_token["email"] == "login@teste.com"
 
 
 def test_login_senha_incorreta(client):

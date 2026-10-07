@@ -22,3 +22,8 @@ class UsuarioResposta(BaseModel):
     data_criacao: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResposta(BaseModel):
+    access_token: str
+    token_type: str

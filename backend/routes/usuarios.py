@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 
+from backend.autenticacao import criar_token_acesso
 from backend.repositorio_usuario import (
     buscar_usuario_por_email,
     cadastrar_usuario,
     verificar_senha,
 )
 from backend.schemas.usuario import (
+    TokenResposta,
     UsuarioCriacao,
     UsuarioLogin,
     UsuarioResposta,
@@ -53,7 +55,7 @@ def criar_usuario(usuario: UsuarioCriacao):
 
 @router.post(
     "/login",
-    response_model=UsuarioResposta
+    response_model=TokenResposta
 )
 def login(usuario_login: UsuarioLogin):
     usuario = buscar_usuario_por_email(
@@ -83,10 +85,12 @@ def login(usuario_login: UsuarioLogin):
             detail="Usuário inativo."
         )
 
+    token = criar_token_acesso(
+        usuario_id=usuario[0],
+        email=usuario[2]
+    )
+
     return {
-        "id": usuario[0],
-        "nome": usuario[1],
-        "email": usuario[2],
-        "ativo": usuario[4],
-        "data_criacao": usuario[5]
+        "access_token": token,
+        "token_type": "bearer"
     }
