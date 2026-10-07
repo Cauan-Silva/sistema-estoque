@@ -137,6 +137,23 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fornecedores (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(150) NOT NULL,
+                cpf_cnpj VARCHAR(20),
+                contato VARCHAR(150),
+                telefone VARCHAR(30),
+                email VARCHAR(150),
+                site VARCHAR(255),
+                ativo BOOLEAN NOT NULL DEFAULT TRUE,
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()

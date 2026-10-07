@@ -34,7 +34,8 @@ def limpar_banco():
             movimentacoes,
             produtos,
             categorias,
-            usuarios
+            usuarios,
+            fornecedores
         RESTART IDENTITY CASCADE;
         """
     )
