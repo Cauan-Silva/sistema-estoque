@@ -80,3 +80,93 @@ def test_email_duplicado():
 
     assert usuario is None
     assert erro == "email_duplicado"
+
+
+def test_api_cadastrar_usuario(client):
+    resposta = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario API",
+            "email": "api@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 201
+
+    dados = resposta.json()
+
+    assert dados["nome"] == "Usuario API"
+    assert dados["email"] == "api@teste.com"
+    assert dados["ativo"] is True
+    assert "id" in dados
+    assert "data_criacao" in dados
+
+
+def test_api_nao_retorna_senha(client):
+    resposta = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Seguro",
+            "email": "seguro@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 201
+
+    dados = resposta.json()
+
+    assert "senha" not in dados
+    assert "senha_hash" not in dados
+
+
+def test_api_email_duplicado(client):
+    dados = {
+        "nome": "Usuario Duplicado",
+        "email": "duplicado-api@teste.com",
+        "senha": "senha123"
+    }
+
+    primeira_resposta = client.post(
+        "/usuarios",
+        json=dados
+    )
+
+    segunda_resposta = client.post(
+        "/usuarios",
+        json=dados
+    )
+
+    assert primeira_resposta.status_code == 201
+    assert segunda_resposta.status_code == 409
+
+    assert segunda_resposta.json() == {
+        "detail": "E-mail já cadastrado."
+    }
+
+
+def test_api_email_invalido(client):
+    resposta = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Email Invalido",
+            "email": "email-invalido",
+            "senha": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 422
+
+
+def test_api_senha_curta(client):
+    resposta = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Senha Curta",
+            "email": "senha@teste.com",
+            "senha": "123"
+        }
+    )
+
+    assert resposta.status_code == 422
