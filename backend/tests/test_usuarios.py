@@ -4,6 +4,7 @@ from backend.repositorio_usuario import (
     buscar_usuario_por_email,
     cadastrar_usuario,
     gerar_hash_senha,
+    verificar_senha,
 )
 
 
@@ -17,6 +18,29 @@ def test_gerar_hash_senha():
         senha.encode("utf-8"),
         senha_hash.encode("utf-8")
     )
+
+
+def test_verificar_senha_correta():
+    senha = "senha123"
+    senha_hash = gerar_hash_senha(senha)
+
+    resultado = verificar_senha(
+        senha,
+        senha_hash
+    )
+
+    assert resultado is True
+
+
+def test_verificar_senha_incorreta():
+    senha_hash = gerar_hash_senha("senha123")
+
+    resultado = verificar_senha(
+        "senha_errada",
+        senha_hash
+    )
+
+    assert resultado is False
 
 
 def test_cadastrar_usuario():
