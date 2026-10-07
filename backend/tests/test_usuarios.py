@@ -194,3 +194,77 @@ def test_api_senha_curta(client):
     )
 
     assert resposta.status_code == 422
+
+
+def test_login_com_sucesso(client):
+    cadastro = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Login",
+            "email": "login@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert cadastro.status_code == 201
+
+    resposta = client.post(
+        "/usuarios/login",
+        json={
+            "email": "login@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert dados["nome"] == "Usuario Login"
+    assert dados["email"] == "login@teste.com"
+    assert dados["ativo"] is True
+    assert "senha" not in dados
+    assert "senha_hash" not in dados
+
+
+def test_login_senha_incorreta(client):
+    cadastro = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Senha Errada",
+            "email": "senha-errada@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert cadastro.status_code == 201
+
+    resposta = client.post(
+        "/usuarios/login",
+        json={
+            "email": "senha-errada@teste.com",
+            "senha": "senhaerrada"
+        }
+    )
+
+    assert resposta.status_code == 401
+
+    assert resposta.json() == {
+        "detail": "E-mail ou senha inválidos."
+    }
+
+
+def test_login_email_inexistente(client):
+    resposta = client.post(
+        "/usuarios/login",
+        json={
+            "email": "naoexiste@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 401
+
+    assert resposta.json() == {
+        "detail": "E-mail ou senha inválidos."
+    }

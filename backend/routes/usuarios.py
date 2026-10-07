@@ -1,8 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 
-from backend.repositorio_usuario import cadastrar_usuario
+from backend.repositorio_usuario import (
+    buscar_usuario_por_email,
+    cadastrar_usuario,
+    verificar_senha,
+)
 from backend.schemas.usuario import (
     UsuarioCriacao,
+    UsuarioLogin,
     UsuarioResposta,
 )
 
@@ -43,4 +48,45 @@ def criar_usuario(usuario: UsuarioCriacao):
         "email": usuario_cadastrado[2],
         "ativo": usuario_cadastrado[3],
         "data_criacao": usuario_cadastrado[4]
+    }
+
+
+@router.post(
+    "/login",
+    response_model=UsuarioResposta
+)
+def login(usuario_login: UsuarioLogin):
+    usuario = buscar_usuario_por_email(
+        usuario_login.email
+    )
+
+    if usuario is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha inválidos."
+        )
+
+    senha_valida = verificar_senha(
+        usuario_login.senha,
+        usuario[3]
+    )
+
+    if not senha_valida:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha inválidos."
+        )
+
+    if not usuario[4]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário inativo."
+        )
+
+    return {
+        "id": usuario[0],
+        "nome": usuario[1],
+        "email": usuario[2],
+        "ativo": usuario[4],
+        "data_criacao": usuario[5]
     }
