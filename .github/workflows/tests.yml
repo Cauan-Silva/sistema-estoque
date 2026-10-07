@@ -37,6 +37,7 @@ jobs:
       DB_NAME: sistema_estoque_test
       DB_USER: postgres
       DB_PASSWORD: teste
+      JWT_SECRET_KEY: chave-jwt-exclusiva-para-testes-ci
 
     steps:
       - name: Checkout repository
