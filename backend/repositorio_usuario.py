@@ -114,3 +114,39 @@ def buscar_usuario_por_email(email: str):
     except psycopg2.Error:
         conexao.close()
         return None
+
+
+def buscar_usuario_por_id(usuario_id: int):
+    conexao = conectar()
+
+    if conexao is None:
+        return None
+
+    try:
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                email,
+                senha_hash,
+                ativo,
+                data_criacao
+            FROM usuarios
+            WHERE id = %s;
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        cursor.close()
+        conexao.close()
+
+        return usuario
+
+    except psycopg2.Error:
+        conexao.close()
+        return None

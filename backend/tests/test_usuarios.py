@@ -3,6 +3,7 @@ import bcrypt
 from backend.autenticacao import validar_token_acesso
 from backend.repositorio_usuario import (
     buscar_usuario_por_email,
+    buscar_usuario_por_id,
     cadastrar_usuario,
     gerar_hash_senha,
     verificar_senha,
@@ -80,6 +81,48 @@ def test_buscar_usuario_por_email():
         senha_hash.encode("utf-8")
     )
 
+def test_buscar_usuario_por_email():
+    cadastrar_usuario(
+        nome="Usuario Busca",
+        email="busca@teste.com",
+        senha="senha123"
+    )
+
+    usuario = buscar_usuario_por_email(
+        "busca@teste.com"
+    )
+
+    assert usuario is not None
+    assert usuario[1] == "Usuario Busca"
+    assert usuario[2] == "busca@teste.com"
+
+    senha_hash = usuario[3]
+
+    assert bcrypt.checkpw(
+        "senha123".encode("utf-8"),
+        senha_hash.encode("utf-8")
+    )
+
+
+def test_buscar_usuario_por_id():
+    usuario_cadastrado, erro = cadastrar_usuario(
+        nome="Usuario Busca ID",
+        email="busca-id@teste.com",
+        senha="senha123"
+    )
+
+    assert erro is None
+    assert usuario_cadastrado is not None
+
+    usuario = buscar_usuario_por_id(
+        usuario_cadastrado[0]
+    )
+
+    assert usuario is not None
+    assert usuario[0] == usuario_cadastrado[0]
+    assert usuario[1] == "Usuario Busca ID"
+    assert usuario[2] == "busca-id@teste.com"
+    assert usuario[4] is True
 
 def test_email_convertido_para_minusculo():
     usuario, erro = cadastrar_usuario(

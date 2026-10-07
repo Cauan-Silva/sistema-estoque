@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
-from backend.repositorio_usuario import buscar_usuario_por_email
+from backend.repositorio_usuario import buscar_usuario_por_id
 
 
 CHAVE_SECRETA = os.getenv("JWT_SECRET_KEY")
@@ -83,8 +83,8 @@ def obter_usuario_atual(
             }
         )
 
-    usuario = buscar_usuario_por_email(
-        dados_token["email"]
+    usuario = buscar_usuario_por_id(
+        dados_token["usuario_id"]
     )
 
     if usuario is None:
