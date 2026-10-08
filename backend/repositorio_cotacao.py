@@ -29,10 +29,14 @@ CONSULTA_COTACAO = """
         c.validade,
         c.observacao,
         c.data_criacao,
-        c.data_atualizacao
+        c.data_atualizacao,
+        c.forma_pagamento_id,
+        fp.codigo || ' - ' || fp.titulo
     FROM cotacoes c
     JOIN fornecedores f
         ON f.id = c.fornecedor_id
+    LEFT JOIN formas_pagamento fp
+        ON fp.id = c.forma_pagamento_id
 """
 
 
@@ -88,6 +92,8 @@ def _montar_cotacao(cursor, registro):
         "observacao": registro[7],
         "data_criacao": registro[8],
         "data_atualizacao": registro[9],
+        "forma_pagamento_id": registro[10],
+        "forma_pagamento": registro[11],
         "itens": itens,
         "valor_itens": _dinheiro(valor_itens),
         "valor_total": _dinheiro(valor_itens + frete)
@@ -158,6 +164,30 @@ def _validar_fornecedor(cursor, fornecedor_id: int):
     return None
 
 
+def _validar_forma_pagamento(cursor, forma_pagamento_id: int | None):
+    if forma_pagamento_id is None:
+        return None
+
+    cursor.execute(
+        """
+        SELECT ativo
+        FROM formas_pagamento
+        WHERE id = %s;
+        """,
+        (forma_pagamento_id,)
+    )
+
+    registro = cursor.fetchone()
+
+    if registro is None:
+        return "forma_pagamento_nao_encontrada"
+
+    if not registro[0]:
+        return "forma_pagamento_inativa"
+
+    return None
+
+
 def _inserir_itens(cursor, cotacao_id: int, itens):
     for item in itens:
         cursor.execute(
@@ -192,7 +222,8 @@ def criar_cotacao(
     prazo_entrega_dias: int,
     validade,
     observacao: str | None,
-    itens
+    itens,
+    forma_pagamento_id: int | None = None
 ):
     conexao = conectar()
 
@@ -206,6 +237,7 @@ def criar_cotacao(
             _travar_solicitacao(cursor, solicitacao_id)
             or _validar_fornecedor(cursor, fornecedor_id)
             or _validar_itens(cursor, solicitacao_id, itens)
+            or _validar_forma_pagamento(cursor, forma_pagamento_id)
         )
 
         if erro is not None:
@@ -236,9 +268,10 @@ def criar_cotacao(
                 frete,
                 prazo_entrega_dias,
                 validade,
-                observacao
+                observacao,
+                forma_pagamento_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -247,7 +280,8 @@ def criar_cotacao(
                 frete,
                 prazo_entrega_dias,
                 validade,
-                observacao
+                observacao,
+                forma_pagamento_id
             )
         )
 
@@ -388,7 +422,8 @@ def atualizar_cotacao(
     prazo_entrega_dias: int,
     validade,
     observacao: str | None,
-    itens
+    itens,
+    forma_pagamento_id: int | None = None
 ):
     conexao = conectar()
 
@@ -410,6 +445,17 @@ def atualizar_cotacao(
         if erro is None:
             erro = _validar_itens(cursor, solicitacao_id, itens)
 
+        if erro is None:
+            cursor.execute(
+                "SELECT forma_pagamento_id FROM cotacoes WHERE id = %s;",
+                (cotacao_id,)
+            )
+
+            forma_atual = cursor.fetchone()[0]
+
+            if forma_pagamento_id != forma_atual:
+                erro = _validar_forma_pagamento(cursor, forma_pagamento_id)
+
         if erro is not None:
             return _finalizar_com_erro(conexao, cursor, erro)
 
@@ -421,6 +467,7 @@ def atualizar_cotacao(
                 prazo_entrega_dias = %s,
                 validade = %s,
                 observacao = %s,
+                forma_pagamento_id = %s,
                 data_atualizacao = CURRENT_TIMESTAMP
             WHERE id = %s;
             """,
@@ -429,6 +476,7 @@ def atualizar_cotacao(
                 prazo_entrega_dias,
                 validade,
                 observacao,
+                forma_pagamento_id,
                 cotacao_id
             )
         )
@@ -548,6 +596,7 @@ def _resumo(cotacao):
         "frete": cotacao["frete"],
         "prazo_entrega_dias": cotacao["prazo_entrega_dias"],
         "validade": cotacao["validade"],
+        "forma_pagamento": cotacao["forma_pagamento"],
     }
 
 
@@ -607,6 +656,7 @@ def comparar_cotacoes(solicitacao_id: int):
                 "frete",
                 "prazo_entrega_dias",
                 "validade",
+                "forma_pagamento",
             )
         }
 

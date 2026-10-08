@@ -24,6 +24,43 @@ def conectar():
         return None
 
 
+FORMAS_PAGAMENTO_PADRAO = [
+    ("1.01", "À vista", "A_VISTA", 1, 0),
+    ("2.01", "Dia específico", "A_PRAZO", 1, 0),
+    *[
+        (
+            f"3.{parcelas:02d}",
+            f"A prazo {parcelas}X",
+            "A_PRAZO",
+            parcelas,
+            30
+        )
+        for parcelas in range(1, 13)
+    ],
+]
+
+
+def semear_formas_pagamento(cursor):
+    cursor.execute("SELECT COUNT(*) FROM formas_pagamento;")
+
+    if cursor.fetchone()[0] > 0:
+        return
+
+    cursor.executemany(
+        """
+        INSERT INTO formas_pagamento (
+            codigo,
+            titulo,
+            tipo,
+            parcelas,
+            intervalo_dias
+        )
+        VALUES (%s, %s, %s, %s, %s);
+        """,
+        FORMAS_PAGAMENTO_PADRAO
+    )
+
+
 def criar_tabela():
     conexao = conectar()
 
@@ -364,6 +401,42 @@ def criar_tabela():
                     REFERENCES movimentacoes(id)
                     ON DELETE SET NULL
             );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS formas_pagamento (
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(10) NOT NULL UNIQUE,
+                titulo VARCHAR(100) NOT NULL,
+                tipo VARCHAR(10) NOT NULL
+                    CHECK (tipo IN ('A_VISTA', 'A_PRAZO')),
+                parcelas INTEGER NOT NULL DEFAULT 1
+                    CHECK (parcelas BETWEEN 1 AND 48),
+                intervalo_dias INTEGER NOT NULL DEFAULT 0
+                    CHECK (intervalo_dias BETWEEN 0 AND 365),
+                ativo BOOLEAN NOT NULL DEFAULT TRUE
+            );
+            """
+        )
+
+        semear_formas_pagamento(cursor)
+
+        cursor.execute(
+            """
+            ALTER TABLE cotacoes
+            ADD COLUMN IF NOT EXISTS forma_pagamento_id INTEGER
+                REFERENCES formas_pagamento(id);
+            """
+        )
+
+        cursor.execute(
+            """
+            ALTER TABLE compras
+            ADD COLUMN IF NOT EXISTS forma_pagamento_id INTEGER
+                REFERENCES formas_pagamento(id),
+            ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(120);
             """
         )
 

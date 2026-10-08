@@ -33,6 +33,9 @@ from backend.routes.cotacoes import (
 from backend.routes.compras import (
     router as compras_router
 )
+from backend.routes.formas_pagamento import (
+    router as formas_pagamento_router
+)
 
 
 @asynccontextmanager
@@ -81,6 +84,7 @@ app.include_router(fornecedores_router)
 app.include_router(solicitacoes_compra_router)
 app.include_router(cotacoes_router)
 app.include_router(compras_router)
+app.include_router(formas_pagamento_router)
 
 
 PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"

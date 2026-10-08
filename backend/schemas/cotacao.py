@@ -22,6 +22,10 @@ class CotacaoBase(BaseModel):
     itens: list[ItemCotacaoEntrada] = Field(
         min_length=1
     )
+    forma_pagamento_id: int | None = Field(
+        default=None,
+        gt=0
+    )
 
     @field_validator("itens")
     @classmethod
@@ -63,6 +67,8 @@ class CotacaoResposta(BaseModel):
     observacao: str | None
     data_criacao: datetime
     data_atualizacao: datetime
+    forma_pagamento_id: int | None = None
+    forma_pagamento: str | None = None
     itens: list[ItemCotacaoResposta]
     valor_itens: float
     valor_total: float
@@ -76,6 +82,7 @@ class CotacaoDestaque(BaseModel):
     frete: float
     prazo_entrega_dias: int
     validade: date | None
+    forma_pagamento: str | None = None
 
 
 class CotacaoComparada(CotacaoDestaque):

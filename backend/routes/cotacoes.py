@@ -48,6 +48,14 @@ ERROS = {
         status.HTTP_400_BAD_REQUEST,
         "Fornecedor inativo."
     ),
+    "forma_pagamento_nao_encontrada": (
+        status.HTTP_404_NOT_FOUND,
+        "Forma de pagamento não encontrada."
+    ),
+    "forma_pagamento_inativa": (
+        status.HTTP_400_BAD_REQUEST,
+        "Forma de pagamento inativa."
+    ),
     "produto_fora_da_solicitacao": (
         status.HTTP_400_BAD_REQUEST,
         "A cotação só pode conter produtos da solicitação."
@@ -101,7 +109,8 @@ def criar(solicitacao_id: int, dados: CotacaoCriacao):
         prazo_entrega_dias=dados.prazo_entrega_dias,
         validade=dados.validade,
         observacao=dados.observacao,
-        itens=itens_para_dict(dados.itens)
+        itens=itens_para_dict(dados.itens),
+        forma_pagamento_id=dados.forma_pagamento_id
     )
 
     if erro is not None or cotacao is None:
@@ -165,7 +174,8 @@ def editar(
         prazo_entrega_dias=dados.prazo_entrega_dias,
         validade=dados.validade,
         observacao=dados.observacao,
-        itens=itens_para_dict(dados.itens)
+        itens=itens_para_dict(dados.itens),
+        forma_pagamento_id=dados.forma_pagamento_id
     )
 
     if erro is not None or cotacao is None:

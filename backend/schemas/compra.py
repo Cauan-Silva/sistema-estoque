@@ -64,4 +64,6 @@ class CompraResposta(BaseModel):
     situacao_recebimento: SituacaoRecebimento
     ultimo_recebimento: date | None
     entregue_no_prazo: bool | None
+    forma_pagamento_id: int | None = None
+    forma_pagamento: str | None = None
     itens: list[ItemCompraResposta]

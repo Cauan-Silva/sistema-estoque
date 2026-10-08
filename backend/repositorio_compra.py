@@ -33,7 +33,9 @@ CONSULTA_COMPRA = f"""
         c.observacao,
         c.data_criacao,
         {SITUACAO_RECEBIMENTO} AS situacao_recebimento,
-        tr.ultimo_recebimento
+        tr.ultimo_recebimento,
+        c.forma_pagamento_id,
+        c.forma_pagamento
     FROM compras c
     JOIN fornecedores f
         ON f.id = c.fornecedor_id
@@ -124,6 +126,8 @@ def _montar_compra(cursor, registro):
         "situacao_recebimento": situacao,
         "ultimo_recebimento": ultimo_recebimento,
         "entregue_no_prazo": entregue_no_prazo,
+        "forma_pagamento_id": registro[17],
+        "forma_pagamento": registro[18],
         "itens": _buscar_itens(cursor, registro[0])
     }
 
@@ -317,9 +321,11 @@ def registrar_compra(
                 valor_itens,
                 frete,
                 valor_total,
-                observacao
+                observacao,
+                forma_pagamento_id,
+                forma_pagamento
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -333,7 +339,9 @@ def registrar_compra(
                 Decimal(str(cotacao["valor_itens"])),
                 Decimal(str(cotacao["frete"])),
                 Decimal(str(cotacao["valor_total"])),
-                observacao
+                observacao,
+                cotacao["forma_pagamento_id"],
+                cotacao["forma_pagamento"]
             )
         )
 
