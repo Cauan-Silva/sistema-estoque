@@ -1,3 +1,4 @@
+import psycopg2
 from fastapi import (
     APIRouter,
     Depends,
@@ -226,9 +227,19 @@ def editar_produto(
     status_code=status.HTTP_204_NO_CONTENT
 )
 def remover_produto(id_produto: int):
-    excluido = excluir_produto(
-        id_produto
-    )
+    try:
+        excluido = excluir_produto(
+            id_produto
+        )
+
+    except psycopg2.errors.ForeignKeyViolation:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Não é possível excluir um produto "
+                "vinculado a solicitações de compra."
+            )
+        )
 
     if not excluido:
         raise HTTPException(

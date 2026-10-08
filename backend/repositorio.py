@@ -390,6 +390,11 @@ def excluir_produto(id_produto):
 
         return excluido
 
+    except psycopg2.errors.ForeignKeyViolation:
+        conexao.rollback()
+        conexao.close()
+        raise
+
     except psycopg2.Error as erro:
         conexao.rollback()
         conexao.close()

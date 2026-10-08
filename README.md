@@ -66,6 +66,15 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Filtro de produtos por fornecedor
 - API de fornecedores protegida por JWT
 
+### Solicitações de compra
+
+- Criação de solicitações com um ou mais produtos
+- Solicitante identificado pelo usuário autenticado
+- Edição de observação e itens enquanto a solicitação está aberta
+- Cancelamento de solicitações
+- Filtro por status e pelas solicitações do próprio usuário
+- Paginação de solicitações
+
 ### Qualidade e infraestrutura
 
 - Testes automatizados com Pytest
@@ -108,6 +117,7 @@ sistema-estoque/
 │   │   ├── movimentacoes.py
 │   │   ├── produtos.py
 │   │   ├── relatorios.py
+│   │   ├── solicitacoes_compra.py
 │   │   └── usuarios.py
 │   │
 │   ├── schemas/
@@ -116,6 +126,7 @@ sistema-estoque/
 │   │   ├── movimentacao.py
 │   │   ├── produto.py
 │   │   ├── relatorio.py
+│   │   ├── solicitacao_compra.py
 │   │   └── usuario.py
 │   │
 │   ├── tests/
@@ -128,6 +139,7 @@ sistema-estoque/
 │   │   ├── test_movimentacoes.py
 │   │   ├── test_produtos.py
 │   │   ├── test_relatorios.py
+│   │   ├── test_solicitacoes_compra.py
 │   │   └── test_usuarios.py
 │   │
 │   ├── autenticacao.py
@@ -139,6 +151,7 @@ sistema-estoque/
 │   ├── repositorio_fornecedor.py
 │   ├── repositorio_movimentacao.py
 │   ├── repositorio_relatorio.py
+│   ├── repositorio_solicitacao_compra.py
 │   └── repositorio_usuario.py
 │
 ├── .env
@@ -320,6 +333,16 @@ PATCH /fornecedores/{fornecedor_id}/status
 ```
 
 As rotas de fornecedores exigem autenticação com JWT.
+
+### Solicitações de compra
+
+```text
+POST  /solicitacoes-compra
+GET   /solicitacoes-compra
+GET   /solicitacoes-compra/{solicitacao_id}
+PUT   /solicitacoes-compra/{solicitacao_id}
+PATCH /solicitacoes-compra/{solicitacao_id}/cancelar
+```
 
 ## Produtos
 
@@ -548,6 +571,38 @@ Inativar ou reativar um fornecedor:
 
 Fornecedores não são excluídos, apenas inativados, para preservar o histórico dos produtos vinculados.
 
+## Solicitações de compra
+
+Uma solicitação de compra registra quais produtos precisam ser comprados e em que quantidade. O solicitante é o usuário autenticado que criou a solicitação.
+
+Exemplo:
+
+```json
+{
+  "observacao": "Reposição mensal",
+  "itens": [
+    { "produto_id": 1, "quantidade": 20 },
+    { "produto_id": 2, "quantidade": 5 }
+  ]
+}
+```
+
+Filtros:
+
+```text
+GET /solicitacoes-compra?status=ABERTA
+GET /solicitacoes-compra?apenas_minhas=true
+GET /solicitacoes-compra?pagina=1&tamanho=10
+```
+
+Status:
+
+| Status | Uso |
+|---|---|
+| `ABERTA` | Solicitação criada, pode ser editada ou cancelada |
+| `CANCELADA` | Solicitação cancelada, não pode mais ser alterada |
+| `EM_COTACAO`, `APROVADA`, `REPROVADA`, `COMPRADA`, `RECEBIDA` | Reservados para as próximas etapas do fluxo de compras |
+
 ## Testes automatizados
 
 O projeto utiliza Pytest para validar o comportamento da aplicação.
@@ -587,6 +642,7 @@ A suíte cobre atualmente:
 - repositório de fornecedores
 - atualização, status e filtros de fornecedores
 - vínculo entre produtos e fornecedores
+- solicitações de compra
 - validações da API
 
 O resultado de cada execução fica disponível na aba **Actions** do GitHub.
@@ -635,6 +691,10 @@ O workflow está localizado em:
 - Fornecedores são inativados em vez de excluídos.
 - Produtos podem ter um fornecedor opcional.
 - Novos vínculos só podem ser feitos com fornecedores ativos.
+- Uma solicitação de compra precisa ter pelo menos um item.
+- Cada produto aparece no máximo uma vez por solicitação.
+- Apenas solicitações abertas podem ser editadas ou canceladas.
+- Produtos vinculados a solicitações de compra não podem ser excluídos.
 
 ## Próximas funcionalidades
 
@@ -643,7 +703,7 @@ O projeto está evoluindo do gerenciamento de estoque para um fluxo integrado de
 Próximas etapas:
 
 1. ~~CRUD completo de fornecedores~~ (concluído)
-2. Solicitações de compra
+2. ~~Solicitações de compra~~ (concluído)
 3. Registro de cotações por fornecedor
 4. Comparação de preços, frete e prazo
 5. Aprovação de compras

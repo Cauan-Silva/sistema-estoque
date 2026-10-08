@@ -180,6 +180,51 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS solicitacoes_compra (
+                id SERIAL PRIMARY KEY,
+                solicitante_id INTEGER NOT NULL
+                    REFERENCES usuarios(id),
+                status VARCHAR(20) NOT NULL DEFAULT 'ABERTA'
+                    CHECK (
+                        status IN (
+                            'ABERTA',
+                            'EM_COTACAO',
+                            'APROVADA',
+                            'REPROVADA',
+                            'COMPRADA',
+                            'RECEBIDA',
+                            'CANCELADA'
+                        )
+                    ),
+                observacao VARCHAR(500),
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+                data_atualizacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS itens_solicitacao_compra (
+                id SERIAL PRIMARY KEY,
+                solicitacao_id INTEGER NOT NULL
+                    REFERENCES solicitacoes_compra(id)
+                    ON DELETE CASCADE,
+                produto_id INTEGER NOT NULL
+                    REFERENCES produtos(id),
+                quantidade INTEGER NOT NULL
+                    CHECK (quantidade > 0),
+
+                CONSTRAINT uq_item_solicitacao_produto
+                    UNIQUE (solicitacao_id, produto_id)
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()
