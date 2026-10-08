@@ -49,7 +49,7 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Endpoint para consultar o usuário autenticado
 - Bloqueio de acesso com token inválido
 - Suporte a usuários ativos e inativos
-- Rotas protegidas por autenticação
+- Todas as rotas de negócio protegidas por autenticação
 
 ### Fornecedores
 
@@ -228,6 +228,29 @@ Swagger:
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+## Autenticação
+
+Todas as rotas da API exigem um token JWT, exceto:
+
+```text
+GET  /
+GET  /health
+POST /usuarios
+POST /usuarios/login
+```
+
+Fluxo de uso:
+
+1. Cadastre um usuário em `POST /usuarios`
+2. Faça login em `POST /usuarios/login` para receber o token
+3. Envie o token no cabeçalho de cada requisição:
+
+```text
+Authorization: Bearer <token>
+```
+
+Requisições sem token ou com token inválido retornam `401`. Usuários inativos recebem `403`.
 
 ## Endpoints
 

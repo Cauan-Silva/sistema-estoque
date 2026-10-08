@@ -1,5 +1,5 @@
-def criar_categoria(client, nome="Switches"):
-    resposta = client.post(
+def criar_categoria(cliente_autenticado, nome="Switches"):
+    resposta = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": nome
@@ -12,13 +12,13 @@ def criar_categoria(client, nome="Switches"):
 
 
 def criar_produto(
-    client,
+    cliente_autenticado,
     categoria_id,
     nome="Switch Intelbras",
     quantidade=10,
     preco=199.90
 ):
-    resposta = client.post(
+    resposta = cliente_autenticado.post(
         "/produtos",
         json={
             "nome": nome,
@@ -33,11 +33,11 @@ def criar_produto(
     return resposta
 
 
-def test_criar_produto(client):
-    categoria_id = criar_categoria(client)
+def test_criar_produto(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     resposta = criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id
     )
 
@@ -51,22 +51,22 @@ def test_criar_produto(client):
     assert dados["preco"] == 199.90
 
 
-def test_listar_produtos(client):
-    categoria_id = criar_categoria(client)
+def test_listar_produtos(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Switch 8 Portas"
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Switch 16 Portas"
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos"
     )
 
@@ -77,17 +77,17 @@ def test_listar_produtos(client):
     assert len(dados) == 2
 
 
-def test_buscar_produto_por_id(client):
-    categoria_id = criar_categoria(client)
+def test_buscar_produto_por_id(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criacao = criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id
     )
 
     produto_id = criacao.json()["id"]
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         f"/produtos/{produto_id}"
     )
 
@@ -99,8 +99,8 @@ def test_buscar_produto_por_id(client):
     assert dados["nome"] == "Switch Intelbras"
 
 
-def test_produto_inexistente(client):
-    resposta = client.get(
+def test_produto_inexistente(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/produtos/9999"
     )
 
@@ -111,8 +111,8 @@ def test_produto_inexistente(client):
     }
 
 
-def test_categoria_inexistente_ao_criar_produto(client):
-    resposta = client.post(
+def test_categoria_inexistente_ao_criar_produto(cliente_autenticado):
+    resposta = cliente_autenticado.post(
         "/produtos",
         json={
             "nome": "Produto Teste",
@@ -129,17 +129,17 @@ def test_categoria_inexistente_ao_criar_produto(client):
     }
 
 
-def test_atualizar_produto(client):
-    categoria_id = criar_categoria(client)
+def test_atualizar_produto(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criacao = criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id
     )
 
     produto_id = criacao.json()["id"]
 
-    resposta = client.put(
+    resposta = cliente_autenticado.put(
         f"/produtos/{produto_id}",
         json={
             "nome": "Switch Atualizado",
@@ -158,45 +158,45 @@ def test_atualizar_produto(client):
     assert dados["preco"] == 299.90
 
 
-def test_excluir_produto(client):
-    categoria_id = criar_categoria(client)
+def test_excluir_produto(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criacao = criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id
     )
 
     produto_id = criacao.json()["id"]
 
-    resposta = client.delete(
+    resposta = cliente_autenticado.delete(
         f"/produtos/{produto_id}"
     )
 
     assert resposta.status_code == 204
 
-    consulta = client.get(
+    consulta = cliente_autenticado.get(
         f"/produtos/{produto_id}"
     )
 
     assert consulta.status_code == 404
 
 
-def test_busca_produto_por_nome(client):
-    categoria_id = criar_categoria(client)
+def test_busca_produto_por_nome(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Switch Intelbras"
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Roteador TP-Link"
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "busca": "Intelbras"
@@ -211,30 +211,30 @@ def test_busca_produto_por_nome(client):
     assert dados[0]["nome"] == "Switch Intelbras"
 
 
-def test_filtro_produto_por_categoria(client):
+def test_filtro_produto_por_categoria(cliente_autenticado):
     categoria_switch = criar_categoria(
-        client,
+        cliente_autenticado,
         "Switches"
     )
 
     categoria_roteador = criar_categoria(
-        client,
+        cliente_autenticado,
         "Roteadores"
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_switch,
         nome="Switch Intelbras"
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_roteador,
         nome="Roteador Intelbras"
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "categoria_id": categoria_switch
@@ -249,24 +249,24 @@ def test_filtro_produto_por_categoria(client):
     assert dados[0]["categoria"] == "Switches"
 
 
-def test_filtro_estoque_baixo(client):
-    categoria_id = criar_categoria(client)
+def test_filtro_estoque_baixo(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto Estoque Baixo",
         quantidade=3
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto Estoque Alto",
         quantidade=20
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "estoque_baixo": True,
@@ -285,10 +285,10 @@ def test_filtro_estoque_baixo(client):
     )
 
 
-def test_validacao_produto(client):
-    categoria_id = criar_categoria(client)
+def test_validacao_produto(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
-    resposta = client.post(
+    resposta = cliente_autenticado.post(
         "/produtos",
         json={
             "nome": "A",
@@ -301,17 +301,17 @@ def test_validacao_produto(client):
     assert resposta.status_code == 422
 
 
-def test_paginacao_produtos_primeira_pagina(client):
-    categoria_id = criar_categoria(client)
+def test_paginacao_produtos_primeira_pagina(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     for numero in range(1, 6):
         criar_produto(
-            client,
+            cliente_autenticado,
             categoria_id,
             nome=f"Produto {numero}"
         )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "pagina": 1,
@@ -328,17 +328,17 @@ def test_paginacao_produtos_primeira_pagina(client):
     assert dados[1]["nome"] == "Produto 2"
 
 
-def test_paginacao_produtos_segunda_pagina(client):
-    categoria_id = criar_categoria(client)
+def test_paginacao_produtos_segunda_pagina(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     for numero in range(1, 6):
         criar_produto(
-            client,
+            cliente_autenticado,
             categoria_id,
             nome=f"Produto {numero}"
         )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "pagina": 2,
@@ -355,17 +355,17 @@ def test_paginacao_produtos_segunda_pagina(client):
     assert dados[1]["nome"] == "Produto 4"
 
 
-def test_paginacao_produtos_ultima_pagina(client):
-    categoria_id = criar_categoria(client)
+def test_paginacao_produtos_ultima_pagina(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     for numero in range(1, 6):
         criar_produto(
-            client,
+            cliente_autenticado,
             categoria_id,
             nome=f"Produto {numero}"
         )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "pagina": 3,
@@ -381,31 +381,31 @@ def test_paginacao_produtos_ultima_pagina(client):
     assert dados[0]["nome"] == "Produto 5"
 
 
-def test_paginacao_produtos_com_filtro(client):
+def test_paginacao_produtos_com_filtro(cliente_autenticado):
     categoria_switch = criar_categoria(
-        client,
+        cliente_autenticado,
         "Switches"
     )
 
     categoria_roteador = criar_categoria(
-        client,
+        cliente_autenticado,
         "Roteadores"
     )
 
     for numero in range(1, 5):
         criar_produto(
-            client,
+            cliente_autenticado,
             categoria_switch,
             nome=f"Switch {numero}"
         )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_roteador,
         nome="Roteador 1"
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "categoria_id": categoria_switch,
@@ -423,8 +423,8 @@ def test_paginacao_produtos_com_filtro(client):
     assert dados[1]["nome"] == "Switch 4"
 
 
-def test_validacao_pagina_produtos(client):
-    resposta = client.get(
+def test_validacao_pagina_produtos(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "pagina": 0
@@ -434,8 +434,8 @@ def test_validacao_pagina_produtos(client):
     assert resposta.status_code == 422
 
 
-def test_validacao_tamanho_pagina_produtos(client):
-    resposta = client.get(
+def test_validacao_tamanho_pagina_produtos(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/produtos",
         params={
             "tamanho": 101

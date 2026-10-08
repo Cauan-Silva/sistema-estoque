@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 import psycopg2
 
+from backend.autenticacao import obter_usuario_atual
 from backend.repositorio_categoria import (
     buscar_categoria,
     cadastrar_categoria,
@@ -18,7 +19,10 @@ from backend.schemas.categoria import (
 
 router = APIRouter(
     prefix="/categorias",
-    tags=["Categorias"]
+    tags=["Categorias"],
+    dependencies=[
+        Depends(obter_usuario_atual)
+    ]
 )
 
 
