@@ -13,10 +13,10 @@ STATUS_PERMITEM_APROVACAO = ("EM_COTACAO",)
 STATUS_PERMITEM_REPROVACAO = ("ABERTA", "EM_COTACAO")
 
 
-def _travar_status(cursor, solicitacao_id: int, permitidos):
+def _travar_status(cursor, solicitacao_id: int, permitidos, usuario_id: int):
     cursor.execute(
         """
-        SELECT status
+        SELECT status, solicitante_id
         FROM solicitacoes_compra
         WHERE id = %s
         FOR UPDATE;
@@ -28,6 +28,9 @@ def _travar_status(cursor, solicitacao_id: int, permitidos):
 
     if registro is None:
         return "solicitacao_nao_encontrada"
+
+    if registro[1] == usuario_id:
+        return "decisao_propria"
 
     if registro[0] not in permitidos:
         return "status_nao_permite_decisao"
@@ -52,7 +55,7 @@ def _registrar_decisao(
     try:
         cursor = conexao.cursor()
 
-        erro = _travar_status(cursor, solicitacao_id, permitidos)
+        erro = _travar_status(cursor, solicitacao_id, permitidos, usuario_id)
 
         if erro is None and validar is not None:
             erro = validar()

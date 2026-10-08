@@ -9,6 +9,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_forma_pagamento import (
     alterar_status_forma_pagamento,
     atualizar_forma_pagamento,
@@ -93,6 +94,7 @@ def buscar(forma_id: int):
 
 @router.post(
     "",
+    dependencies=[exigir("fornecedores.editar")],
     response_model=FormaPagamentoResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -111,7 +113,11 @@ def criar(dados: FormaPagamentoEntrada):
     return forma
 
 
-@router.put("/{forma_id}", response_model=FormaPagamentoResposta)
+@router.put(
+    "/{forma_id}",
+    response_model=FormaPagamentoResposta,
+    dependencies=[exigir("fornecedores.editar")]
+)
 def editar(forma_id: int, dados: FormaPagamentoEntrada):
     forma, erro = atualizar_forma_pagamento(
         forma_id,
@@ -128,7 +134,11 @@ def editar(forma_id: int, dados: FormaPagamentoEntrada):
     return forma
 
 
-@router.patch("/{forma_id}/status", response_model=FormaPagamentoResposta)
+@router.patch(
+    "/{forma_id}/status",
+    response_model=FormaPagamentoResposta,
+    dependencies=[exigir("fornecedores.editar")]
+)
 def alterar_status(forma_id: int, dados: FormaPagamentoStatus):
     forma, erro = alterar_status_forma_pagamento(forma_id, dados.ativo)
 

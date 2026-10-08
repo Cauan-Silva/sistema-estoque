@@ -7,6 +7,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_aprovacao import (
     aprovar_solicitacao,
     reprovar_solicitacao,
@@ -54,6 +55,10 @@ ERROS = {
         status.HTTP_409_CONFLICT,
         "Esta solicitação não pode mais ser cancelada."
     ),
+    "decisao_propria": (
+        status.HTTP_403_FORBIDDEN,
+        "Você não pode aprovar ou reprovar uma solicitação criada por você."
+    ),
     "status_nao_permite_decisao": (
         status.HTTP_409_CONFLICT,
         "A solicitação não pode ser aprovada ou reprovada no status atual."
@@ -100,6 +105,7 @@ def itens_para_dict(itens):
 
 @router.post(
     "",
+    dependencies=[exigir("solicitacoes.editar")],
     response_model=SolicitacaoCompraResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -169,6 +175,7 @@ def buscar(solicitacao_id: int):
 
 @router.put(
     "/{solicitacao_id}",
+    dependencies=[exigir("solicitacoes.editar")],
     response_model=SolicitacaoCompraResposta
 )
 def editar(
@@ -192,6 +199,7 @@ def editar(
 
 @router.patch(
     "/{solicitacao_id}/cancelar",
+    dependencies=[exigir("solicitacoes.editar")],
     response_model=SolicitacaoCompraResposta
 )
 def cancelar(solicitacao_id: int):
@@ -208,6 +216,7 @@ def cancelar(solicitacao_id: int):
 
 @router.patch(
     "/{solicitacao_id}/aprovar",
+    dependencies=[exigir("compras.aprovar")],
     response_model=SolicitacaoCompraResposta
 )
 def aprovar(
@@ -233,6 +242,7 @@ def aprovar(
 
 @router.patch(
     "/{solicitacao_id}/reprovar",
+    dependencies=[exigir("compras.aprovar")],
     response_model=SolicitacaoCompraResposta
 )
 def reprovar(

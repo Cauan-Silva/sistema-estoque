@@ -9,6 +9,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_compra import (
     buscar_compra,
     buscar_compra_por_solicitacao,
@@ -91,6 +92,7 @@ def tratar_erro(erro: str | None, mensagem_padrao: str):
 
 @router.post(
     "/solicitacoes-compra/{solicitacao_id}/compra",
+    dependencies=[exigir("compras.registrar")],
     response_model=CompraResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -186,6 +188,7 @@ def buscar(compra_id: int):
 
 @router.post(
     "/solicitacoes-compra/{solicitacao_id}/compra/recebimentos",
+    dependencies=[exigir("recebimentos.registrar")],
     response_model=RecebimentoResposta,
     status_code=status.HTTP_201_CREATED
 )

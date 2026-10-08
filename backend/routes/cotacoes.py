@@ -6,6 +6,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_cotacao import (
     atualizar_cotacao,
     buscar_cotacao,
@@ -98,6 +99,7 @@ def itens_para_dict(itens):
 
 @router.post(
     "",
+    dependencies=[exigir("cotacoes.editar")],
     response_model=CotacaoResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -160,6 +162,7 @@ def buscar(solicitacao_id: int, cotacao_id: int):
 
 @router.put(
     "/{cotacao_id}",
+    dependencies=[exigir("cotacoes.editar")],
     response_model=CotacaoResposta
 )
 def editar(
@@ -186,6 +189,7 @@ def editar(
 
 @router.delete(
     "/{cotacao_id}",
+    dependencies=[exigir("cotacoes.editar")],
     status_code=status.HTTP_204_NO_CONTENT
 )
 def remover(solicitacao_id: int, cotacao_id: int):

@@ -1,6 +1,7 @@
 import uuid
 
 from backend.tests.apoio_compras import (
+    novo_cliente,
     criar_fornecedor,
     criar_solicitacao_com_dois_itens,
     registrar_cotacao,
@@ -185,7 +186,7 @@ def test_cotacao_e_compra_com_forma_de_pagamento(cliente_autenticado):
     assert comparacao["cotacoes"][0]["forma_pagamento"] == "3.03 - A prazo 3X"
     assert comparacao["menor_valor_total"]["forma_pagamento"] == "3.03 - A prazo 3X"
 
-    cliente.patch(
+    novo_cliente("APROVADOR").patch(
         f"/solicitacoes-compra/{solicitacao_id}/aprovar",
         json={"cotacao_id": cotacao["id"]}
     )

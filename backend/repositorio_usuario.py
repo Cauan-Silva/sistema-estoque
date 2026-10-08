@@ -41,15 +41,24 @@ def cadastrar_usuario(nome: str, email: str, senha: str):
             INSERT INTO usuarios (
                 nome,
                 email,
-                senha_hash
+                senha_hash,
+                perfil
             )
-            VALUES (%s, %s, %s)
+            SELECT
+                %s,
+                %s,
+                %s,
+                CASE
+                    WHEN EXISTS (SELECT 1 FROM usuarios) THEN 'CONSULTA'
+                    ELSE 'ADMINISTRADOR'
+                END
             RETURNING
                 id,
                 nome,
                 email,
                 ativo,
-                data_criacao;
+                data_criacao,
+                perfil;
             """,
             (
                 nome,
@@ -97,7 +106,8 @@ def buscar_usuario_por_email(email: str):
                 email,
                 senha_hash,
                 ativo,
-                data_criacao
+                data_criacao,
+                perfil
             FROM usuarios
             WHERE email = %s;
             """,
@@ -133,7 +143,8 @@ def buscar_usuario_por_id(usuario_id: int):
                 email,
                 senha_hash,
                 ativo,
-                data_criacao
+                data_criacao,
+                perfil
             FROM usuarios
             WHERE id = %s;
             """,
@@ -150,3 +161,93 @@ def buscar_usuario_por_id(usuario_id: int):
     except psycopg2.Error:
         conexao.close()
         return None
+
+
+COLUNAS_PUBLICAS = """
+    id,
+    nome,
+    email,
+    ativo,
+    data_criacao,
+    perfil
+"""
+
+
+def _usuario_publico(registro):
+    return {
+        "id": registro[0],
+        "nome": registro[1],
+        "email": registro[2],
+        "ativo": registro[3],
+        "data_criacao": registro[4],
+        "perfil": registro[5],
+    }
+
+
+def listar_usuarios():
+    conexao = conectar()
+
+    if conexao is None:
+        return None
+
+    try:
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            f"SELECT {COLUNAS_PUBLICAS} FROM usuarios ORDER BY nome, id;"
+        )
+
+        usuarios = [_usuario_publico(r) for r in cursor.fetchall()]
+
+        cursor.close()
+        conexao.close()
+
+        return usuarios
+
+    except psycopg2.Error:
+        conexao.close()
+        return None
+
+
+def atualizar_acesso_usuario(
+    usuario_id: int,
+    perfil: str | None,
+    ativo: bool | None
+):
+    conexao = conectar()
+
+    if conexao is None:
+        return None, "erro_conexao"
+
+    try:
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            f"""
+            UPDATE usuarios
+            SET
+                perfil = COALESCE(%s, perfil),
+                ativo = COALESCE(%s, ativo)
+            WHERE id = %s
+            RETURNING {COLUNAS_PUBLICAS};
+            """,
+            (perfil, ativo, usuario_id)
+        )
+
+        registro = cursor.fetchone()
+
+        conexao.commit()
+
+        cursor.close()
+        conexao.close()
+
+        if registro is None:
+            return None, "usuario_nao_encontrado"
+
+        return _usuario_publico(registro), None
+
+    except psycopg2.Error:
+        conexao.rollback()
+        conexao.close()
+
+        return None, "erro_banco"

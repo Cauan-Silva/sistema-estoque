@@ -1,3 +1,13 @@
+import uuid
+
+from fastapi.testclient import TestClient
+
+from backend.autenticacao import criar_token_acesso
+from backend.database import conectar
+from backend.main import app
+from backend.repositorio_usuario import cadastrar_usuario
+
+
 VALIDADE_FUTURA = "2099-12-31"
 VALIDADE_VENCIDA = "2020-01-01"
 
@@ -102,7 +112,7 @@ def solicitacao_aprovada(cliente):
         prazo=10
     )
 
-    aprovacao = cliente.patch(
+    aprovacao = novo_cliente("APROVADOR").patch(
         f"/solicitacoes-compra/{solicitacao_id}/aprovar",
         json={
             "cotacao_id": cotacao["id"]
@@ -130,3 +140,30 @@ def compra_registrada(cliente, data_compra="2026-10-01", previsao=None):
     assert resposta.status_code == 201
 
     return solicitacao_id, resposta.json()
+
+
+def novo_cliente(perfil, nome=None):
+    """Cria um usuário com o perfil informado e devolve um cliente autenticado."""
+    sufixo = uuid.uuid4().hex[:8]
+
+    usuario, erro = cadastrar_usuario(
+        nome=nome or f"Usuario {perfil.title()}",
+        email=f"{perfil.lower()}.{sufixo}@teste.com",
+        senha="senha123"
+    )
+
+    assert erro is None
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+    cursor.execute(
+        "UPDATE usuarios SET perfil = %s WHERE id = %s;",
+        (perfil, usuario[0])
+    )
+    conexao.commit()
+    cursor.close()
+    conexao.close()
+
+    token = criar_token_acesso(usuario_id=usuario[0], email=usuario[2])
+
+    return TestClient(app, headers={"Authorization": f"Bearer {token}"})

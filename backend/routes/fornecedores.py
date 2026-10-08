@@ -7,6 +7,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_fornecedor import (
     alterar_status_fornecedor,
     atualizar_fornecedor,
@@ -47,6 +48,7 @@ def fornecedor_para_resposta(fornecedor):
 
 @router.post(
     "",
+    dependencies=[exigir("fornecedores.editar")],
     response_model=FornecedorResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -108,6 +110,7 @@ def buscar(fornecedor_id: int):
 
 @router.put(
     "/{fornecedor_id}",
+    dependencies=[exigir("fornecedores.editar")],
     response_model=FornecedorResposta
 )
 def editar(
@@ -143,6 +146,7 @@ def editar(
 
 @router.patch(
     "/{fornecedor_id}/status",
+    dependencies=[exigir("fornecedores.editar")],
     response_model=FornecedorResposta
 )
 def alterar_status(

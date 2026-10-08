@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -20,8 +21,27 @@ class UsuarioResposta(BaseModel):
     email: EmailStr
     ativo: bool
     data_criacao: datetime
+    perfil: str = "CONSULTA"
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UsuarioAtualResposta(UsuarioResposta):
+    permissoes: list[str]
+
+
+Perfil = Literal[
+    "ADMINISTRADOR",
+    "COMPRADOR",
+    "APROVADOR",
+    "ALMOXARIFE",
+    "CONSULTA",
+]
+
+
+class UsuarioAcesso(BaseModel):
+    perfil: Perfil | None = None
+    ativo: bool | None = None
 
 
 class TokenResposta(BaseModel):

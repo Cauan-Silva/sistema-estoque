@@ -107,6 +107,8 @@ ROTAS_PROTEGIDAS = [
     ("post", "/formas-pagamento"),
     ("put", "/formas-pagamento/1"),
     ("patch", "/formas-pagamento/1/status"),
+    ("get", "/usuarios"),
+    ("patch", "/usuarios/1"),
 ]
 
 

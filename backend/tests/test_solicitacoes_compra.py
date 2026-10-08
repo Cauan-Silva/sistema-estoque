@@ -1,3 +1,4 @@
+from backend.tests.apoio_compras import novo_cliente
 from fastapi.testclient import TestClient
 
 from backend.autenticacao import criar_token_acesso
@@ -311,26 +312,10 @@ def test_filtrar_apenas_minhas_solicitacoes(cliente_autenticado):
 
     minha = criar_solicitacao(cliente_autenticado, item)
 
-    outro_usuario, erro = cadastrar_usuario(
-        nome="Outro Usuario",
-        email="outro@teste.com",
-        senha="senha123"
-    )
+    outro_cliente = novo_cliente("COMPRADOR", "Outro Usuario")
+    de_outro = criar_solicitacao(outro_cliente, item)
 
-    assert erro is None
-
-    token = criar_token_acesso(
-        usuario_id=outro_usuario[0],
-        email=outro_usuario[2]
-    )
-
-    with TestClient(
-        app,
-        headers={"Authorization": f"Bearer {token}"}
-    ) as outro_cliente:
-        de_outro = criar_solicitacao(outro_cliente, item)
-
-        assert de_outro["solicitante"] == "Outro Usuario"
+    assert de_outro["solicitante"] == "Outro Usuario"
 
     minhas = cliente_autenticado.get(
         "/solicitacoes-compra?apenas_minhas=true"

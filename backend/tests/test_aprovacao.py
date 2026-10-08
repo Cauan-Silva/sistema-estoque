@@ -2,13 +2,15 @@ from backend.tests.apoio_compras import (
     VALIDADE_VENCIDA,
     criar_fornecedor,
     criar_solicitacao_com_dois_itens,
+    novo_cliente,
     registrar_cotacao,
     solicitacao_aprovada,
 )
 
 
 def aprovar(cliente, solicitacao_id, cotacao_id, justificativa=None):
-    return cliente.patch(
+    """Aprova com um usuário aprovador, que não é quem criou a solicitação."""
+    return novo_cliente("APROVADOR", "Usuario Aprovador").patch(
         f"/solicitacoes-compra/{solicitacao_id}/aprovar",
         json={
             "cotacao_id": cotacao_id,
@@ -40,7 +42,7 @@ def test_aprovar_cotacao(cliente_autenticado):
 
     assert dados["status"] == "APROVADA"
     assert dados["cotacao_aprovada_id"] == cotacao["id"]
-    assert dados["decisao_por"] == "Usuario Testes"
+    assert dados["decisao_por"] == "Usuario Aprovador"
     assert dados["data_decisao"] is not None
     assert dados["justificativa_decisao"] == "Menor valor total"
 
@@ -145,7 +147,7 @@ def test_reprovar_solicitacao(cliente_autenticado):
         {cabo: 2, conector: 1}
     )
 
-    resposta = cliente.patch(
+    resposta = novo_cliente("APROVADOR").patch(
         f"/solicitacoes-compra/{solicitacao_id}/reprovar",
         json={
             "justificativa": "Valores acima do orçamento"
@@ -172,7 +174,7 @@ def test_reprovar_exige_justificativa(cliente_autenticado):
         cliente_autenticado
     )
 
-    resposta = cliente_autenticado.patch(
+    resposta = novo_cliente("APROVADOR").patch(
         f"/solicitacoes-compra/{solicitacao_id}/reprovar",
         json={}
     )
@@ -184,3 +186,50 @@ def test_aprovar_solicitacao_inexistente(cliente_autenticado):
     resposta = aprovar(cliente_autenticado, 9999, 1)
 
     assert resposta.status_code == 404
+
+
+def test_nao_aprovar_a_propria_solicitacao(cliente_autenticado):
+    cliente = cliente_autenticado
+    solicitacao_id, cabo, conector = criar_solicitacao_com_dois_itens(cliente)
+    fornecedor_id = criar_fornecedor(cliente, "Fornecedor A")
+
+    cotacao = registrar_cotacao(
+        cliente, solicitacao_id, fornecedor_id,
+        {cabo: 2, conector: 1}
+    )
+
+    aprovacao = cliente.patch(
+        f"/solicitacoes-compra/{solicitacao_id}/aprovar",
+        json={"cotacao_id": cotacao["id"]}
+    )
+    reprovacao = cliente.patch(
+        f"/solicitacoes-compra/{solicitacao_id}/reprovar",
+        json={"justificativa": "Teste de segregação"}
+    )
+
+    for resposta in (aprovacao, reprovacao):
+        assert resposta.status_code == 403
+        assert resposta.json() == {
+            "detail": "Você não pode aprovar ou reprovar uma solicitação criada por você."
+        }
+
+
+def test_comprador_nao_aprova(cliente_autenticado):
+    cliente = cliente_autenticado
+    solicitacao_id, cabo, conector = criar_solicitacao_com_dois_itens(cliente)
+    fornecedor_id = criar_fornecedor(cliente, "Fornecedor A")
+
+    cotacao = registrar_cotacao(
+        cliente, solicitacao_id, fornecedor_id,
+        {cabo: 2, conector: 1}
+    )
+
+    resposta = novo_cliente("COMPRADOR").patch(
+        f"/solicitacoes-compra/{solicitacao_id}/aprovar",
+        json={"cotacao_id": cotacao["id"]}
+    )
+
+    assert resposta.status_code == 403
+    assert resposta.json() == {
+        "detail": "Seu perfil não tem permissão para esta ação."
+    }

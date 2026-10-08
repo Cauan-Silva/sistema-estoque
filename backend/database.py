@@ -425,6 +425,30 @@ def criar_tabela():
 
         cursor.execute(
             """
+            ALTER TABLE usuarios
+            ADD COLUMN IF NOT EXISTS perfil VARCHAR(20) NOT NULL
+                DEFAULT 'ADMINISTRADOR'
+                CHECK (
+                    perfil IN (
+                        'ADMINISTRADOR',
+                        'COMPRADOR',
+                        'APROVADOR',
+                        'ALMOXARIFE',
+                        'CONSULTA'
+                    )
+                );
+            """
+        )
+
+        cursor.execute(
+            """
+            ALTER TABLE usuarios
+            ALTER COLUMN perfil SET DEFAULT 'CONSULTA';
+            """
+        )
+
+        cursor.execute(
+            """
             ALTER TABLE cotacoes
             ADD COLUMN IF NOT EXISTS forma_pagamento_id INTEGER
                 REFERENCES formas_pagamento(id);

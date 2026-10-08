@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import psycopg2
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_categoria import (
     buscar_categoria,
     cadastrar_categoria,
@@ -52,6 +53,7 @@ def obter_categoria(id_categoria: int):
 
 @router.post(
     "",
+    dependencies=[exigir("estoque.editar")],
     response_model=CategoriaResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -70,6 +72,7 @@ def criar_categoria(dados: CategoriaCriar):
 
 @router.put(
     "/{id_categoria}",
+    dependencies=[exigir("estoque.editar")],
     response_model=CategoriaResposta
 )
 def atualizar_categoria(
@@ -99,6 +102,7 @@ def atualizar_categoria(
 
 @router.delete(
     "/{id_categoria}",
+    dependencies=[exigir("estoque.editar")],
     status_code=status.HTTP_204_NO_CONTENT
 )
 def remover_categoria(id_categoria: int):

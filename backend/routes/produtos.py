@@ -8,6 +8,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio import (
     atualizar_produto,
     buscar_produto_por_id,
@@ -125,6 +126,7 @@ def obter_produto(id_produto: int):
 
 @router.post(
     "",
+    dependencies=[exigir("estoque.editar")],
     response_model=ProdutoResposta,
     status_code=status.HTTP_201_CREATED
 )
@@ -165,6 +167,7 @@ def criar_produto(dados: ProdutoCriar):
 
 @router.put(
     "/{id_produto}",
+    dependencies=[exigir("estoque.editar")],
     response_model=ProdutoResposta
 )
 def editar_produto(
@@ -224,6 +227,7 @@ def editar_produto(
 
 @router.delete(
     "/{id_produto}",
+    dependencies=[exigir("estoque.editar")],
     status_code=status.HTTP_204_NO_CONTENT
 )
 def remover_produto(id_produto: int):

@@ -10,6 +10,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.repositorio_movimentacao import (
     buscar_movimentacao_por_id,
     listar_movimentacoes,
@@ -107,6 +108,7 @@ def obter_movimentacao(
 
 @router.post(
     "",
+    dependencies=[exigir("estoque.editar")],
     response_model=MovimentacaoResposta,
     status_code=status.HTTP_201_CREATED
 )
