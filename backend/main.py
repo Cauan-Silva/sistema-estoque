@@ -25,6 +25,9 @@ from backend.routes.fornecedores import (
 from backend.routes.solicitacoes_compra import (
     router as solicitacoes_compra_router
 )
+from backend.routes.cotacoes import (
+    router as cotacoes_router
+)
 
 
 @asynccontextmanager
@@ -39,8 +42,8 @@ app = FastAPI(
     description=(
         "API REST para gerenciamento de estoque, "
         "produtos, categorias, movimentações, "
-        "relatórios, usuários, fornecedores "
-        "e solicitações de compra"
+        "relatórios, usuários, fornecedores, "
+        "solicitações de compra e cotações"
     ),
     version="1.0.0",
     lifespan=lifespan
@@ -70,3 +73,4 @@ app.include_router(relatorios_router)
 app.include_router(usuarios_router)
 app.include_router(fornecedores_router)
 app.include_router(solicitacoes_compra_router)
+app.include_router(cotacoes_router)

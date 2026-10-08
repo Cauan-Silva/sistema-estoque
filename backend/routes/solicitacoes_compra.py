@@ -44,6 +44,10 @@ ERROS = {
         status.HTTP_409_CONFLICT,
         "Apenas solicitações abertas podem ser alteradas."
     ),
+    "status_nao_permite_cancelamento": (
+        status.HTTP_409_CONFLICT,
+        "Esta solicitação não pode mais ser cancelada."
+    ),
 }
 
 

@@ -87,6 +87,11 @@ ROTAS_PROTEGIDAS = [
     ("post", "/solicitacoes-compra"),
     ("put", "/solicitacoes-compra/1"),
     ("patch", "/solicitacoes-compra/1/cancelar"),
+    ("get", "/solicitacoes-compra/1/cotacoes"),
+    ("post", "/solicitacoes-compra/1/cotacoes"),
+    ("get", "/solicitacoes-compra/1/cotacoes/1"),
+    ("put", "/solicitacoes-compra/1/cotacoes/1"),
+    ("delete", "/solicitacoes-compra/1/cotacoes/1"),
 ]
 
 

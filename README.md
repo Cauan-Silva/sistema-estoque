@@ -75,6 +75,14 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Filtro por status e pelas solicitações do próprio usuário
 - Paginação de solicitações
 
+### Cotações
+
+- Registro de cotações por fornecedor para cada solicitação
+- Preço unitário por produto, frete, prazo de entrega, validade e observação
+- Cálculo automático de subtotal por item, valor dos itens e valor total
+- Uma cotação por fornecedor em cada solicitação
+- Atualização e exclusão de cotações
+
 ### Qualidade e infraestrutura
 
 - Testes automatizados com Pytest
@@ -113,6 +121,7 @@ sistema-estoque/
 ├── backend/
 │   ├── routes/
 │   │   ├── categorias.py
+│   │   ├── cotacoes.py
 │   │   ├── fornecedores.py
 │   │   ├── movimentacoes.py
 │   │   ├── produtos.py
@@ -122,6 +131,7 @@ sistema-estoque/
 │   │
 │   ├── schemas/
 │   │   ├── categoria.py
+│   │   ├── cotacao.py
 │   │   ├── fornecedor.py
 │   │   ├── movimentacao.py
 │   │   ├── produto.py
@@ -134,6 +144,7 @@ sistema-estoque/
 │   │   ├── test_autenticacao.py
 │   │   ├── test_autorizacao.py
 │   │   ├── test_categorias.py
+│   │   ├── test_cotacoes.py
 │   │   ├── test_fornecedores.py
 │   │   ├── test_health.py
 │   │   ├── test_movimentacoes.py
@@ -148,6 +159,7 @@ sistema-estoque/
 │   ├── produto.py
 │   ├── repositorio.py
 │   ├── repositorio_categoria.py
+│   ├── repositorio_cotacao.py
 │   ├── repositorio_fornecedor.py
 │   ├── repositorio_movimentacao.py
 │   ├── repositorio_relatorio.py
@@ -342,6 +354,16 @@ GET   /solicitacoes-compra
 GET   /solicitacoes-compra/{solicitacao_id}
 PUT   /solicitacoes-compra/{solicitacao_id}
 PATCH /solicitacoes-compra/{solicitacao_id}/cancelar
+```
+
+### Cotações
+
+```text
+POST   /solicitacoes-compra/{solicitacao_id}/cotacoes
+GET    /solicitacoes-compra/{solicitacao_id}/cotacoes
+GET    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
+PUT    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
+DELETE /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
 ```
 
 ## Produtos
@@ -600,8 +622,42 @@ Status:
 | Status | Uso |
 |---|---|
 | `ABERTA` | Solicitação criada, pode ser editada ou cancelada |
+| `EM_COTACAO` | Possui pelo menos uma cotação; os itens ficam congelados, mas ainda pode ser cancelada |
 | `CANCELADA` | Solicitação cancelada, não pode mais ser alterada |
-| `EM_COTACAO`, `APROVADA`, `REPROVADA`, `COMPRADA`, `RECEBIDA` | Reservados para as próximas etapas do fluxo de compras |
+| `APROVADA`, `REPROVADA`, `COMPRADA`, `RECEBIDA` | Reservados para as próximas etapas do fluxo de compras |
+
+## Cotações
+
+Cada fornecedor pode registrar uma cotação para uma solicitação de compra, informando o preço unitário dos produtos solicitados, o frete e o prazo de entrega.
+
+Exemplo:
+
+```json
+{
+  "fornecedor_id": 1,
+  "frete": 15.50,
+  "prazo_entrega_dias": 7,
+  "validade": "2026-12-31",
+  "observacao": "Pagamento em 30 dias",
+  "itens": [
+    { "produto_id": 1, "preco_unitario": 2.35 },
+    { "produto_id": 2, "preco_unitario": 1.10 }
+  ]
+}
+```
+
+A resposta inclui, para cada item, a quantidade solicitada e o subtotal, além de `valor_itens` e `valor_total`:
+
+```text
+subtotal    = quantidade solicitada × preço unitário
+valor_total = soma dos subtotais + frete
+```
+
+Fluxo:
+
+- A primeira cotação muda a solicitação de `ABERTA` para `EM_COTACAO`.
+- Excluir a última cotação devolve a solicitação para `ABERTA`.
+- Cotações só podem ser registradas, editadas ou excluídas enquanto a solicitação está `ABERTA` ou `EM_COTACAO`.
 
 ## Testes automatizados
 
@@ -643,6 +699,7 @@ A suíte cobre atualmente:
 - atualização, status e filtros de fornecedores
 - vínculo entre produtos e fornecedores
 - solicitações de compra
+- cotações
 - validações da API
 
 O resultado de cada execução fica disponível na aba **Actions** do GitHub.
@@ -693,7 +750,11 @@ O workflow está localizado em:
 - Novos vínculos só podem ser feitos com fornecedores ativos.
 - Uma solicitação de compra precisa ter pelo menos um item.
 - Cada produto aparece no máximo uma vez por solicitação.
-- Apenas solicitações abertas podem ser editadas ou canceladas.
+- Apenas solicitações abertas podem ser editadas.
+- Solicitações abertas ou em cotação podem ser canceladas.
+- Cada fornecedor pode ter apenas uma cotação por solicitação.
+- Cotações só aceitam fornecedores ativos e produtos da própria solicitação.
+- Uma cotação pode cobrir apenas parte dos itens da solicitação.
 - Produtos vinculados a solicitações de compra não podem ser excluídos.
 
 ## Próximas funcionalidades
@@ -704,7 +765,7 @@ Próximas etapas:
 
 1. ~~CRUD completo de fornecedores~~ (concluído)
 2. ~~Solicitações de compra~~ (concluído)
-3. Registro de cotações por fornecedor
+3. ~~Registro de cotações por fornecedor~~ (concluído)
 4. Comparação de preços, frete e prazo
 5. Aprovação de compras
 6. Registro da compra realizada

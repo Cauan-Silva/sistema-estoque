@@ -242,12 +242,15 @@ def test_solicitacao_cancelada_nao_pode_ser_alterada(cliente_autenticado):
         f"/solicitacoes-compra/{criada['id']}/cancelar"
     )
 
-    for resposta in (edicao, novo_cancelamento):
-        assert resposta.status_code == 409
+    assert edicao.status_code == 409
+    assert edicao.json() == {
+        "detail": "Apenas solicitações abertas podem ser alteradas."
+    }
 
-        assert resposta.json() == {
-            "detail": "Apenas solicitações abertas podem ser alteradas."
-        }
+    assert novo_cancelamento.status_code == 409
+    assert novo_cancelamento.json() == {
+        "detail": "Esta solicitação não pode mais ser cancelada."
+    }
 
 
 def test_listar_e_filtrar_solicitacoes(cliente_autenticado):

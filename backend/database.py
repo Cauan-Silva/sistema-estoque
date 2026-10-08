@@ -225,6 +225,50 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cotacoes (
+                id SERIAL PRIMARY KEY,
+                solicitacao_id INTEGER NOT NULL
+                    REFERENCES solicitacoes_compra(id)
+                    ON DELETE CASCADE,
+                fornecedor_id INTEGER NOT NULL
+                    REFERENCES fornecedores(id),
+                frete NUMERIC(10, 2) NOT NULL DEFAULT 0
+                    CHECK (frete >= 0),
+                prazo_entrega_dias INTEGER NOT NULL
+                    CHECK (prazo_entrega_dias >= 0),
+                validade DATE,
+                observacao VARCHAR(500),
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+                data_atualizacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+
+                CONSTRAINT uq_cotacao_solicitacao_fornecedor
+                    UNIQUE (solicitacao_id, fornecedor_id)
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS itens_cotacao (
+                id SERIAL PRIMARY KEY,
+                cotacao_id INTEGER NOT NULL
+                    REFERENCES cotacoes(id)
+                    ON DELETE CASCADE,
+                produto_id INTEGER NOT NULL
+                    REFERENCES produtos(id),
+                preco_unitario NUMERIC(10, 2) NOT NULL
+                    CHECK (preco_unitario >= 0),
+
+                CONSTRAINT uq_item_cotacao_produto
+                    UNIQUE (cotacao_id, produto_id)
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()

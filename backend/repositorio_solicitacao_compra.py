@@ -4,6 +4,7 @@ from backend.database import conectar
 
 
 STATUS_EDITAVEIS = ("ABERTA",)
+STATUS_CANCELAVEIS = ("ABERTA", "EM_COTACAO")
 
 
 def _buscar_itens(cursor, solicitacao_id: int):
@@ -256,7 +257,12 @@ def listar_solicitacoes(
         return []
 
 
-def _status_para_alteracao(cursor, solicitacao_id: int):
+def _status_para_alteracao(
+    cursor,
+    solicitacao_id: int,
+    permitidos=STATUS_EDITAVEIS,
+    erro_status="status_nao_permite_alteracao"
+):
     cursor.execute(
         """
         SELECT status
@@ -272,8 +278,8 @@ def _status_para_alteracao(cursor, solicitacao_id: int):
     if registro is None:
         return None, "solicitacao_nao_encontrada"
 
-    if registro[0] not in STATUS_EDITAVEIS:
-        return None, "status_nao_permite_alteracao"
+    if registro[0] not in permitidos:
+        return None, erro_status
 
     return registro[0], None
 
@@ -361,7 +367,12 @@ def cancelar_solicitacao(solicitacao_id: int):
     try:
         cursor = conexao.cursor()
 
-        _, erro = _status_para_alteracao(cursor, solicitacao_id)
+        _, erro = _status_para_alteracao(
+            cursor,
+            solicitacao_id,
+            permitidos=STATUS_CANCELAVEIS,
+            erro_status="status_nao_permite_cancelamento"
+        )
 
         if erro is not None:
             conexao.rollback()
