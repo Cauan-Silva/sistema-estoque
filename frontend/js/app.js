@@ -1,5 +1,6 @@
 import { api, obterToken, removerToken } from "./api.js";
 import { h, carregando, vazio } from "./ui.js";
+import { seletorTema } from "./tema.js";
 import { telaEntrar } from "./telas/entrar.js";
 import { telaPainel } from "./telas/painel.js";
 import { telaProdutos } from "./telas/produtos.js";
@@ -113,7 +114,8 @@ function montarEstrutura() {
         { class: "usuario" },
         h("strong", {}, usuarioAtual.nome),
         h("span", { class: "suave" }, usuarioAtual.email),
-        h("div", {}, h("button", { class: "pequeno", onClick: sair }, "Sair"))
+        h("div", {}, h("button", { class: "pequeno", onClick: sair }, "Sair")),
+        seletorTema()
       )
     ),
     areaConteudo

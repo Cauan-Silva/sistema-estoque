@@ -1,5 +1,6 @@
 import { api, salvarToken } from "../api.js";
 import { h } from "../ui.js";
+import { seletorTema } from "../tema.js";
 
 export function telaEntrar(raiz, aoEntrar) {
   let modo = "entrar";
@@ -35,7 +36,8 @@ export function telaEntrar(raiz, aoEntrar) {
     ),
     erro,
     botao,
-    alternar
+    alternar,
+    seletorTema()
   );
 
   function aplicarModo() {

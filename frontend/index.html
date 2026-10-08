@@ -8,6 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
+  <script>
+    try {
+      var tema = localStorage.getItem("estoque.tema");
+      if (tema === "claro" || tema === "escuro") document.documentElement.dataset.tema = tema;
+    } catch (erro) {}
+  </script>
 </head>
 <body>
   <div id="app" aria-live="polite"></div>

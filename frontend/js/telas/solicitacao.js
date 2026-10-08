@@ -5,13 +5,14 @@ import {
   confirmar,
   etiquetaStatus,
   executar,
+  corStatus,
   formatar,
   h,
-  hojeISO,
   tabela,
   vazio,
 } from "../ui.js";
 import { formularioSolicitacao } from "./solicitacoes.js";
+import { abrirRegistroCompra } from "./acoes_compra.js";
 
 const PODE_EDITAR = ["ABERTA"];
 const PODE_COTAR = ["ABERTA", "EM_COTACAO"];
@@ -340,7 +341,7 @@ export async function telaSolicitacao(area, id) {
 
     return h(
       "section",
-      { class: "secao" },
+      { class: "secao", id: "comparacao" },
       h("h2", {}, "Comparação"),
       h(
         "p",
@@ -391,27 +392,45 @@ export async function telaSolicitacao(area, id) {
   /* ---------- Compra ---------- */
 
   function registrarCompra() {
-    const aprovada = cotacoes.find((c) => c.id === solicitacao.cotacao_aprovada_id);
-
-    abrirFormulario({
-      titulo: "Registrar compra",
-      descricao: aprovada
-        ? `${aprovada.fornecedor}: ${formatar.moeda(aprovada.valor_total)}. Se a previsão ficar vazia, ela é calculada com o prazo de ${formatar.dias(aprovada.prazo_entrega_dias)}.`
-        : undefined,
-      campos: [
-        { nome: "numero_pedido", rotulo: "Número do pedido", maximo: 50 },
-        [
-          { nome: "data_compra", rotulo: "Data da compra", tipo: "date", valor: hojeISO() },
-          { nome: "previsao_entrega", rotulo: "Previsão de entrega", tipo: "date" },
-        ],
-        { nome: "observacao", rotulo: "Observação", tipo: "textarea", maximo: 500 },
-      ],
-      textoAcao: "Registrar compra",
-      aoEnviar: async (dados) => {
-        await api.post(`/solicitacoes-compra/${id}/compra`, dados);
-        recarregar();
-      },
+    abrirRegistroCompra({
+      solicitacaoId: id,
+      cotacao: cotacoes.find((c) => c.id === solicitacao.cotacao_aprovada_id),
+      aoConcluir: recarregar,
     });
+  }
+
+  function proximoPasso() {
+    const passos = {
+      ABERTA: [
+        "Registre as cotações dos fornecedores para esta solicitação.",
+        h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação"),
+      ],
+      EM_COTACAO: [
+        "Compare as cotações abaixo e aprove a melhor. Só cotações completas e dentro da validade podem ser aprovadas.",
+        h(
+          "button",
+          {
+            class: "primario",
+            onClick: () => document.getElementById("comparacao")?.scrollIntoView({ behavior: "smooth" }),
+          },
+          "Ver comparação"
+        ),
+      ],
+      APROVADA: [
+        "A cotação foi aprovada. Registre a compra quando o pedido for feito ao fornecedor.",
+        h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra"),
+      ],
+    };
+
+    const passo = passos[status];
+    if (!passo) return null;
+
+    return h(
+      "aside",
+      { class: "proximo-passo", dataset: { cor: corStatus(status) } },
+      h("div", {}, h("strong", {}, "Próximo passo"), h("p", {}, passo[0])),
+      passo[1]
+    );
   }
 
   function blocoCompra() {
@@ -480,6 +499,7 @@ export async function telaSolicitacao(area, id) {
       acoes.length ? h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, acoes) : null
     ),
     etapas(solicitacao, cotacoes.length),
+    proximoPasso(),
     ficha([
       ["Solicitante", solicitacao.solicitante],
       ["Criada em", formatar.dataHora(solicitacao.data_criacao)],
