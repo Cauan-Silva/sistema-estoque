@@ -78,6 +78,13 @@ export async function telaMovimentacoes(area) {
           { titulo: "Produto", valor: (m) => m.produto_nome },
           { titulo: "Tipo", valor: (m) => etiquetaStatus(m.tipo) },
           {
+            titulo: "Origem",
+            valor: (m) =>
+              m.recebimento_id
+                ? `Recebimento Nº ${m.recebimento_id}`
+                : h("span", { class: "suave" }, "Manual"),
+          },
+          {
             titulo: "Quantidade",
             classe: "direita numero",
             valor: (m) => `${m.tipo === "SAIDA" ? "−" : "+"}${formatar.numero(m.quantidade)}`,

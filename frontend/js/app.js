@@ -10,6 +10,7 @@ import { telaFornecedores } from "./telas/fornecedores.js";
 import { telaSolicitacoes } from "./telas/solicitacoes.js";
 import { telaSolicitacao } from "./telas/solicitacao.js";
 import { telaCompras } from "./telas/compras.js";
+import { telaRelatorioCompras } from "./telas/relatorio_compras.js";
 
 const raiz = document.getElementById("app");
 
@@ -29,6 +30,7 @@ const MENU = [
       { caminho: "#/fornecedores", texto: "Fornecedores", cor: "var(--fibra-laranja)" },
       { caminho: "#/solicitacoes", texto: "Solicitações", cor: "var(--fibra-laranja)" },
       { caminho: "#/compras", texto: "Compras", cor: "var(--fibra-marrom)" },
+      { caminho: "#/relatorio-compras", texto: "Relatório de compras", cor: "var(--fibra-agua)" },
     ],
   },
 ];
@@ -42,6 +44,7 @@ const ROTAS = [
   { padrao: /^#\/solicitacoes$/, tela: telaSolicitacoes },
   { padrao: /^#\/solicitacoes\/(\d+)$/, tela: telaSolicitacao },
   { padrao: /^#\/compras$/, tela: telaCompras },
+  { padrao: /^#\/relatorio-compras$/, tela: telaRelatorioCompras },
 ];
 
 let usuarioAtual = null;

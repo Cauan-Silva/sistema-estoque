@@ -4,7 +4,7 @@ import { cabecalho, etiquetaStatus, formatar, h, tabela } from "../ui.js";
 const LIMITE_ESTOQUE_BAIXO = 5;
 
 export async function telaPainel(area) {
-  const [resumo, maiorValor, estoqueBaixo, abertas, emCotacao, aprovadas] = await Promise.all([
+  const [resumo, maiorValor, estoqueBaixo, abertas, emCotacao, aprovadas, compradas] = await Promise.all([
     api.get(`/relatorios/resumo${montarQuery({ limite_estoque: LIMITE_ESTOQUE_BAIXO })}`),
     api.get("/relatorios/maior-valor?limite=5"),
     api.get(
@@ -13,12 +13,13 @@ export async function telaPainel(area) {
     api.get("/solicitacoes-compra?status=ABERTA&tamanho=100"),
     api.get("/solicitacoes-compra?status=EM_COTACAO&tamanho=100"),
     api.get("/solicitacoes-compra?status=APROVADA&tamanho=100"),
+    api.get("/solicitacoes-compra?status=COMPRADA&tamanho=100"),
   ]);
 
   const indicador = (rotulo, valor, alerta = false) =>
     h("div", { class: `indicador ${alerta ? "alerta" : ""}` }, h("dt", {}, rotulo), h("dd", {}, valor));
 
-  const pendentes = [...aprovadas, ...emCotacao, ...abertas].slice(0, 8);
+  const pendentes = [...compradas, ...aprovadas, ...emCotacao, ...abertas].slice(0, 8);
 
   area.replaceChildren(
     cabecalho("Painel", "Situação do estoque e das compras em andamento."),
@@ -33,7 +34,11 @@ export async function telaPainel(area) {
         formatar.numero(resumo.produtos_estoque_baixo),
         resumo.produtos_estoque_baixo > 0
       ),
-      indicador("Compras em andamento", formatar.numero(abertas.length + emCotacao.length + aprovadas.length))
+      indicador(
+        "Compras em andamento",
+        formatar.numero(abertas.length + emCotacao.length + aprovadas.length + compradas.length)
+      ),
+      indicador("Aguardando entrega", formatar.numero(compradas.length))
     ),
     h(
       "div",

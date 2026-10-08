@@ -94,6 +94,14 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Previsão de entrega calculada pelo prazo da cotação
 - Consulta de compras com filtro por fornecedor e paginação
 
+### Recebimento e relatórios de compras
+
+- Recebimento total ou parcial dos materiais comprados
+- Entrada automática no estoque a cada recebimento
+- Situação da entrega por compra: pendente, parcial ou completa
+- Indicação de entrega no prazo ou com atraso
+- Relatório de compras por período, fornecedor, produto e mês
+
 ### Qualidade e infraestrutura
 
 - Testes automatizados com Pytest
@@ -306,12 +314,15 @@ Telas disponíveis:
 - Movimentações, com filtros por produto, tipo e período
 - Fornecedores, com edição e ativação/inativação
 - Solicitações de compra
-- Detalhe da solicitação: itens, cotações, comparação, aprovação, reprovação e registro da compra
-- Compras
+- Detalhe da solicitação: próximo passo, itens, cotações, comparação, aprovação, reprovação, registro da compra e recebimento
+- Compras, com as solicitações aguardando compra e a situação de cada entrega
+- Relatório de compras
+
+O tema pode ser automático (segue o sistema operacional), claro ou escuro. A escolha fica no menu lateral e na tela de entrada.
 
 O token de acesso fica salvo no navegador. Quando ele expira, o frontend volta para a tela de entrada.
 
-Os status usam o código de cores da fibra óptica: azul para aberta, laranja para em cotação, verde para aprovada, marrom para comprada, ardósia para cancelada e vermelho para reprovada.
+Os status usam o código de cores da fibra óptica: azul para aberta, laranja para em cotação, verde para aprovada, marrom para comprada, água para recebida, ardósia para cancelada e vermelho para reprovada.
 
 ## Autenticação
 
@@ -436,6 +447,19 @@ POST /solicitacoes-compra/{solicitacao_id}/compra
 GET  /solicitacoes-compra/{solicitacao_id}/compra
 GET  /compras
 GET  /compras/{compra_id}
+```
+
+### Recebimentos
+
+```text
+POST /solicitacoes-compra/{solicitacao_id}/compra/recebimentos
+GET  /solicitacoes-compra/{solicitacao_id}/compra/recebimentos
+```
+
+### Relatório de compras
+
+```text
+GET /relatorios/compras
 ```
 
 ## Produtos
@@ -697,14 +721,14 @@ Status:
 | `EM_COTACAO` | Possui pelo menos uma cotação; os itens ficam congelados, mas ainda pode ser cancelada |
 | `APROVADA` | Uma cotação foi aprovada; aguarda o registro da compra e ainda pode ser cancelada |
 | `REPROVADA` | Solicitação reprovada, não pode mais ser alterada |
-| `COMPRADA` | Compra registrada |
+| `COMPRADA` | Compra registrada, aguardando a entrega total dos materiais |
 | `CANCELADA` | Solicitação cancelada, não pode mais ser alterada |
-| `RECEBIDA` | Reservado para o recebimento dos materiais |
+| `RECEBIDA` | Todos os itens da compra foram recebidos e estão no estoque |
 
 Fluxo completo:
 
 ```text
-ABERTA → EM_COTACAO → APROVADA → COMPRADA
+ABERTA → EM_COTACAO → APROVADA → COMPRADA → RECEBIDA
 
 ABERTA ou EM_COTACAO            → REPROVADA
 ABERTA, EM_COTACAO ou APROVADA  → CANCELADA
@@ -805,10 +829,54 @@ A compra guarda uma cópia do fornecedor, dos itens, dos preços, do frete e do 
 Consultas:
 
 ```text
-GET /compras?fornecedor_id=1&pagina=1&tamanho=10
+GET /compras?fornecedor_id=1&situacao_recebimento=PENDENTE&data_inicio=2026-10-01&data_fim=2026-10-31&pagina=1&tamanho=10
 GET /compras/{compra_id}
 GET /solicitacoes-compra/{solicitacao_id}/compra
 ```
+
+## Recebimento de materiais
+
+Quando os materiais chegam, registre o recebimento da compra:
+
+```json
+{
+  "data_recebimento": "2026-10-05",
+  "nota_fiscal": "NF-123",
+  "observacao": "Caixa 2 com avaria leve",
+  "itens": [
+    { "produto_id": 1, "quantidade": 6 }
+  ]
+}
+```
+
+- Sem `itens`, o recebimento considera tudo o que ainda está pendente.
+- Uma compra pode ter vários recebimentos, para entregas parciais.
+- A quantidade recebida não pode passar da quantidade pendente.
+- `data_recebimento` usa a data atual quando não é informada e não pode ser anterior à data da compra.
+
+Cada recebimento **entra no estoque automaticamente**: na mesma transação, a quantidade de cada produto aumenta e é criada uma movimentação de `ENTRADA` com o campo `recebimento_id`.
+
+A compra passa a mostrar:
+
+- `situacao_recebimento`: `PENDENTE`, `PARCIAL` ou `COMPLETO`;
+- `quantidade_recebida` e `quantidade_pendente` de cada item;
+- `ultimo_recebimento` e `entregue_no_prazo`, comparando a última entrega com a previsão.
+
+Quando tudo é recebido, a solicitação passa para `RECEBIDA`.
+
+## Relatório de compras
+
+```text
+GET /relatorios/compras?data_inicio=2026-01-01&data_fim=2026-12-31&fornecedor_id=1
+```
+
+Todos os filtros são opcionais e o período considera a data da compra. A resposta traz:
+
+- total de compras, valor comprado, valor dos itens, frete e valor médio por compra;
+- quantidade de entregas completas, parciais e pendentes;
+- entregas no prazo e com atraso, percentual no prazo e tempo médio de entrega em dias;
+- compras com previsão vencida e entrega ainda incompleta;
+- resumos por fornecedor, por produto (com preço médio, menor e maior) e por mês.
 
 ## Testes automatizados
 
@@ -854,6 +922,8 @@ A suíte cobre atualmente:
 - comparação de cotações
 - aprovação e reprovação
 - registro e consulta de compras
+- recebimentos e entrada automática no estoque
+- relatório de compras
 - validações da API
 
 O resultado de cada execução fica disponível na aba **Actions** do GitHub.
@@ -914,6 +984,9 @@ O workflow está localizado em:
 - Solicitações aprovadas ainda podem ser canceladas até o registro da compra.
 - Cada solicitação aprovada gera no máximo uma compra.
 - A compra guarda uma cópia dos valores aprovados.
+- Recebimentos não podem passar da quantidade pendente de cada item.
+- Cada recebimento gera entradas no estoque na mesma transação.
+- A solicitação só passa para `RECEBIDA` quando todos os itens chegam.
 - Produtos vinculados a solicitações de compra não podem ser excluídos.
 
 ## Próximas funcionalidades
@@ -928,9 +1001,9 @@ Próximas etapas:
 4. ~~Comparação de preços, frete e prazo~~ (concluído)
 5. ~~Aprovação de compras~~ (concluído)
 6. ~~Registro da compra realizada~~ (concluído)
-7. Recebimento de materiais
-8. Entrada automática dos materiais no estoque
-9. Histórico e relatórios de compras
+7. ~~Recebimento de materiais~~ (concluído)
+8. ~~Entrada automática dos materiais no estoque~~ (concluído)
+9. ~~Histórico e relatórios de compras~~ (concluído)
 10. ~~Dashboard~~ (painel no frontend)
 11. Exportação de dados para Excel/PDF
 12. Controle de permissões por usuário

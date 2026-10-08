@@ -8,6 +8,7 @@ import {
   corStatus,
   formatar,
   h,
+  hojeISO,
   tabela,
   vazio,
 } from "../ui.js";
@@ -19,10 +20,10 @@ const PODE_COTAR = ["ABERTA", "EM_COTACAO"];
 const PODE_CANCELAR = ["ABERTA", "EM_COTACAO", "APROVADA"];
 const PODE_REPROVAR = ["ABERTA", "EM_COTACAO"];
 
-function etapas(solicitacao, totalCotacoes) {
+function etapas(solicitacao, totalCotacoes, compra) {
   const { status } = solicitacao;
   const interrompida = status === "CANCELADA" || status === "REPROVADA";
-  const ordem = ["ABERTA", "EM_COTACAO", "APROVADA", "COMPRADA"];
+  const ordem = ["ABERTA", "EM_COTACAO", "APROVADA", "COMPRADA", "RECEBIDA"];
   const posicao = ordem.indexOf(status);
 
   const passos = [
@@ -41,9 +42,21 @@ function etapas(solicitacao, totalCotacoes) {
     },
     {
       titulo: "Compra",
-      detalhe: status === "COMPRADA" ? "Registrada" : "Aguardando",
-      feita: status === "COMPRADA",
+      detalhe: compra ? formatar.data(compra.data_compra) : "Aguardando",
+      feita: posicao >= 3,
       atual: status === "APROVADA",
+    },
+    {
+      titulo: "Recebimento",
+      detalhe: !compra
+        ? "Aguardando"
+        : compra.situacao_recebimento === "COMPLETO"
+          ? formatar.data(compra.ultimo_recebimento)
+          : compra.situacao_recebimento === "PARCIAL"
+            ? "Parcial"
+            : `Previsto para ${formatar.data(compra.previsao_entrega)}`,
+      feita: status === "RECEBIDA",
+      atual: status === "COMPRADA",
     },
   ];
 
@@ -87,8 +100,14 @@ export async function telaSolicitacao(area, id) {
     api.get("/fornecedores?ativo=true"),
   ]);
 
-  const compra =
-    solicitacao.status === "COMPRADA" ? await api.get(`/solicitacoes-compra/${id}/compra`) : null;
+  const temCompra = ["COMPRADA", "RECEBIDA"].includes(solicitacao.status);
+
+  const [compra, recebimentos] = temCompra
+    ? await Promise.all([
+        api.get(`/solicitacoes-compra/${id}/compra`),
+        api.get(`/solicitacoes-compra/${id}/compra/recebimentos`),
+      ])
+    : [null, []];
 
   const recarregar = () => telaSolicitacao(area, id);
   const status = solicitacao.status;
@@ -420,6 +439,12 @@ export async function telaSolicitacao(area, id) {
         "A cotação foi aprovada. Registre a compra quando o pedido for feito ao fornecedor.",
         h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra"),
       ],
+      COMPRADA: [
+        compra && compra.situacao_recebimento === "PARCIAL"
+          ? "Parte dos materiais já chegou. Registre o restante quando for entregue."
+          : `Registre o recebimento quando os materiais chegarem. Previsão: ${compra ? formatar.data(compra.previsao_entrega) : "—"}.`,
+        h("button", { class: "primario", onClick: () => registrarRecebimento() }, "Registrar recebimento"),
+      ],
     };
 
     const passo = passos[status];
@@ -455,7 +480,14 @@ export async function telaSolicitacao(area, id) {
     return h(
       "section",
       { class: "secao" },
-      h("h2", {}, "Compra"),
+      h(
+        "div",
+        { class: "titulo-secao" },
+        h("h2", {}, "Compra e recebimento"),
+        status === "COMPRADA"
+          ? h("button", { class: "primario", onClick: () => registrarRecebimento() }, "Registrar recebimento")
+          : null
+      ),
       ficha([
         ["Fornecedor", compra.fornecedor],
         ["Número do pedido", compra.numero_pedido || "—"],
@@ -463,9 +495,107 @@ export async function telaSolicitacao(area, id) {
         ["Previsão de entrega", formatar.data(compra.previsao_entrega)],
         ["Comprador", compra.comprador],
         ["Valor total", h("span", { class: "numero" }, formatar.moeda(compra.valor_total))],
+        ["Entrega", etiquetaStatus(compra.situacao_recebimento)],
+        compra.entregue_no_prazo === null
+          ? null
+          : ["Pontualidade", compra.entregue_no_prazo ? "Entregue no prazo" : "Entregue com atraso"],
         compra.observacao ? ["Observação", compra.observacao, true] : null,
-      ])
+      ]),
+      tabela(
+        [
+          { titulo: "Produto", valor: (i) => i.produto },
+          { titulo: "Comprado", classe: "direita numero", valor: (i) => formatar.numero(i.quantidade) },
+          { titulo: "Recebido", classe: "direita numero", valor: (i) => formatar.numero(i.quantidade_recebida) },
+          {
+            titulo: "Pendente",
+            classe: "direita numero",
+            valor: (i) => (i.quantidade_pendente ? h("strong", {}, formatar.numero(i.quantidade_pendente)) : "0"),
+          },
+          { titulo: "Preço unitário", classe: "direita numero", valor: (i) => formatar.moeda(i.preco_unitario) },
+          { titulo: "Subtotal", classe: "direita numero", valor: (i) => formatar.moeda(i.subtotal) },
+        ],
+        compra.itens
+      ),
+      recebimentos.length
+        ? [
+            h("h3", { style: { margin: "20px 0 10px" } }, "Recebimentos"),
+            tabela(
+              [
+                { titulo: "Data", classe: "numero", valor: (r) => formatar.data(r.data_recebimento) },
+                { titulo: "Nota fiscal", valor: (r) => r.nota_fiscal || "—" },
+                {
+                  titulo: "Itens",
+                  valor: (r) =>
+                    r.itens.map((i) => `${i.produto} (${formatar.numero(i.quantidade)})`).join(", "),
+                },
+                { titulo: "Recebido por", valor: (r) => r.recebedor },
+                { titulo: "Observação", valor: (r) => r.observacao || "—" },
+              ],
+              recebimentos
+            ),
+          ]
+        : null
     );
+  }
+
+  function registrarRecebimento() {
+    const pendentes = compra.itens.filter((item) => item.quantidade_pendente > 0);
+
+    const camposQuantidade = pendentes.map((item) =>
+      h(
+        "label",
+        {},
+        `${item.produto} (pendente: ${formatar.numero(item.quantidade_pendente)})`,
+        h("input", {
+          type: "number",
+          min: 0,
+          max: item.quantidade_pendente,
+          step: 1,
+          name: `quantidade_${item.produto_id}`,
+          value: item.quantidade_pendente,
+        })
+      )
+    );
+
+    abrirDialogo({
+      titulo: "Registrar recebimento",
+      descricao: "Confira as quantidades que chegaram. Elas entram no estoque assim que você confirmar.",
+      conteudo: [
+        h("h3", {}, "Quantidades recebidas"),
+        camposQuantidade,
+        h(
+          "div",
+          { class: "linha-campos" },
+          h("label", {}, "Data do recebimento", h("input", { type: "date", name: "data_recebimento", value: hojeISO() })),
+          h("label", {}, "Nota fiscal", h("input", { name: "nota_fiscal", maxlength: "50" }))
+        ),
+        h("label", {}, "Observação", h("textarea", { name: "observacao", maxlength: "500" })),
+      ],
+      textoAcao: "Confirmar recebimento",
+      aoEnviar: async (formulario) => {
+        const campos = formulario.elements;
+
+        const itens = pendentes
+          .map((item) => ({
+            produto_id: item.produto_id,
+            quantidade: Number(campos[`quantidade_${item.produto_id}`].value || 0),
+          }))
+          .filter((item) => item.quantidade > 0);
+
+        if (!itens.length) {
+          throw new Error("Informe a quantidade recebida de pelo menos um produto.");
+        }
+
+        await api.post(`/solicitacoes-compra/${id}/compra/recebimentos`, {
+          data_recebimento: campos.data_recebimento.value || null,
+          nota_fiscal: campos.nota_fiscal.value.trim() || null,
+          observacao: campos.observacao.value.trim() || null,
+          itens,
+        });
+
+        recarregar();
+      },
+    });
   }
 
   /* ---------- Montagem ---------- */
@@ -477,7 +607,7 @@ export async function telaSolicitacao(area, id) {
   ].filter(Boolean);
 
   const decisao =
-    solicitacao.decisao_por && ["APROVADA", "COMPRADA", "REPROVADA"].includes(status)
+    solicitacao.decisao_por && ["APROVADA", "COMPRADA", "RECEBIDA", "REPROVADA"].includes(status)
       ? [
           [status === "REPROVADA" ? "Reprovada por" : "Aprovada por", solicitacao.decisao_por],
           ["Data da decisão", formatar.dataHora(solicitacao.data_decisao)],
@@ -498,7 +628,7 @@ export async function telaSolicitacao(area, id) {
       ),
       acoes.length ? h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, acoes) : null
     ),
-    etapas(solicitacao, cotacoes.length),
+    etapas(solicitacao, cotacoes.length, compra),
     proximoPasso(),
     ficha([
       ["Solicitante", solicitacao.solicitante],

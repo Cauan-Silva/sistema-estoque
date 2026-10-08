@@ -17,6 +17,8 @@
   --fibra-marrom: #7a4a2a;
   --fibra-ardosia: #5d6b73;
   --fibra-vermelho: #c8102e;
+  --fibra-amarelo: #b38f00;
+  --fibra-agua: #13878a;
 
   --primario: #263a44;
   --primario-hover: #35505c;
@@ -54,6 +56,8 @@
   --fibra-marrom: #b98559;
   --fibra-ardosia: #8e9ca3;
   --fibra-vermelho: #f0607a;
+  --fibra-amarelo: #dcbd3a;
+  --fibra-agua: #3cbcbf;
 
   --primario: #2c6690;
   --primario-hover: #3577a6;
@@ -86,6 +90,8 @@
   --fibra-marrom: #b98559;
   --fibra-ardosia: #8e9ca3;
   --fibra-vermelho: #f0607a;
+  --fibra-amarelo: #dcbd3a;
+  --fibra-agua: #3cbcbf;
 
   --primario: #2c6690;
   --primario-hover: #3577a6;
@@ -522,6 +528,8 @@ tfoot td {
 .status[data-cor="marrom"] { --cor: var(--fibra-marrom); }
 .status[data-cor="ardosia"] { --cor: var(--fibra-ardosia); }
 .status[data-cor="vermelho"] { --cor: var(--fibra-vermelho); }
+.status[data-cor="amarelo"] { --cor: var(--fibra-amarelo); }
+.status[data-cor="agua"] { --cor: var(--fibra-agua); }
 
 /* ---------- Painel ---------- */
 
@@ -590,7 +598,7 @@ tfoot td {
   margin: 0 0 28px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   counter-reset: etapa;
 }
 
@@ -1010,6 +1018,7 @@ dialog .erro {
 .proximo-passo[data-cor="laranja"] { --cor: var(--fibra-laranja); }
 .proximo-passo[data-cor="verde"] { --cor: var(--fibra-verde); }
 .proximo-passo[data-cor="marrom"] { --cor: var(--fibra-marrom); }
+.proximo-passo[data-cor="agua"] { --cor: var(--fibra-agua); }
 
 /* ---------- Seletor de tema ---------- */
 
@@ -1059,4 +1068,30 @@ dialog .erro {
 .entrada-form .tema button[aria-pressed="true"] {
   background: var(--linha);
   color: var(--tinta);
+}
+
+/* ---------- Relatório de compras ---------- */
+
+.filtros-soltos {
+  border-bottom: 1px solid var(--linha);
+  border-radius: var(--raio-grande);
+  margin-bottom: 20px;
+}
+
+.coluna-barra {
+  width: 30%;
+  min-width: 90px;
+}
+
+.barra {
+  height: 10px;
+  background: var(--linha);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barra span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
 }
