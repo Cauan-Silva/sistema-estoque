@@ -1,3 +1,4 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
@@ -7,6 +8,8 @@ from backend.repositorio_cotacao import (
     cotacao_vencida,
 )
 from backend.repositorio_solicitacao_compra import buscar_solicitacao
+
+logger = logging.getLogger(__name__)
 
 
 STATUS_PERMITEM_APROVACAO = ("EM_COTACAO",)
@@ -99,7 +102,7 @@ def _registrar_decisao(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao registrar decisão da solicitação: {erro}")
+        logger.error(f"Erro ao registrar decisão da solicitação: {erro}")
 
         return None, "erro_banco"
 

@@ -1,3 +1,4 @@
+import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -5,6 +6,8 @@ import psycopg2
 
 from backend.database import conectar
 from backend.repositorio_cotacao import buscar_cotacao
+
+logger = logging.getLogger(__name__)
 
 
 SITUACAO_RECEBIMENTO = """
@@ -162,7 +165,7 @@ def _buscar_uma(condicao: str, parametro):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao buscar compra: {erro}")
+        logger.error(f"Erro ao buscar compra: {erro}")
 
         return None
 
@@ -239,7 +242,7 @@ def listar_compras(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao listar compras: {erro}")
+        logger.error(f"Erro ao listar compras: {erro}")
 
         return []
 
@@ -390,6 +393,6 @@ def registrar_compra(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao registrar compra: {erro}")
+        logger.error(f"Erro ao registrar compra: {erro}")
 
         return None, "erro_banco"

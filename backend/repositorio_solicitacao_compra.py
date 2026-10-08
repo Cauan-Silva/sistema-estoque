@@ -1,6 +1,9 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 STATUS_EDITAVEIS = ("ABERTA",)
@@ -168,7 +171,7 @@ def criar_solicitacao(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao criar solicitação de compra: {erro}")
+        logger.error(f"Erro ao criar solicitação de compra: {erro}")
 
         return None, "erro_banco"
 
@@ -203,7 +206,7 @@ def buscar_solicitacao(solicitacao_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao buscar solicitação de compra: {erro}")
+        logger.error(f"Erro ao buscar solicitação de compra: {erro}")
 
         return None
 
@@ -264,7 +267,7 @@ def listar_solicitacoes(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao listar solicitações de compra: {erro}")
+        logger.error(f"Erro ao listar solicitações de compra: {erro}")
 
         return []
 
@@ -365,7 +368,7 @@ def atualizar_solicitacao(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao atualizar solicitação de compra: {erro}")
+        logger.error(f"Erro ao atualizar solicitação de compra: {erro}")
 
         return None, "erro_banco"
 
@@ -415,6 +418,6 @@ def cancelar_solicitacao(solicitacao_id: int):
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao cancelar solicitação de compra: {erro}")
+        logger.error(f"Erro ao cancelar solicitação de compra: {erro}")
 
         return None, "erro_banco"

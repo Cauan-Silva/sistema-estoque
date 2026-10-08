@@ -1,9 +1,12 @@
+import logging
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 CENTAVOS = Decimal("0.01")
@@ -118,7 +121,7 @@ def gerar_relatorio_compras(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao gerar relatório de compras: {erro}")
+        logger.error(f"Erro ao gerar relatório de compras: {erro}")
 
         return None
 

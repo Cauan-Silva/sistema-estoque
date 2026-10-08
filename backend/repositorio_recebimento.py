@@ -1,8 +1,11 @@
+import logging
 from datetime import date
 
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 def _pendentes_por_produto(cursor, compra_id: int):
@@ -123,7 +126,7 @@ def buscar_recebimento(recebimento_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao buscar recebimento: {erro}")
+        logger.error(f"Erro ao buscar recebimento: {erro}")
 
         return None
 
@@ -172,7 +175,7 @@ def listar_recebimentos(solicitacao_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao listar recebimentos: {erro}")
+        logger.error(f"Erro ao listar recebimentos: {erro}")
 
         return None
 
@@ -369,6 +372,6 @@ def registrar_recebimento(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao registrar recebimento: {erro}")
+        logger.error(f"Erro ao registrar recebimento: {erro}")
 
         return None, "erro_banco"

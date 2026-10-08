@@ -1,7 +1,10 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
 from backend.produto import Produto
+
+logger = logging.getLogger(__name__)
 
 
 def cadastrar_produto(
@@ -75,7 +78,7 @@ def cadastrar_produto(
         conexao.rollback()
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao cadastrar produto: {erro}"
         )
 
@@ -210,7 +213,7 @@ def listar_produtos(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao listar produtos: {erro}"
         )
 
@@ -269,7 +272,7 @@ def buscar_produto_por_id(id_produto):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao buscar produto: {erro}"
         )
 
@@ -357,7 +360,7 @@ def atualizar_produto(
         conexao.rollback()
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao atualizar produto: {erro}"
         )
 
@@ -399,7 +402,7 @@ def excluir_produto(id_produto):
         conexao.rollback()
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao excluir produto: {erro}"
         )
 

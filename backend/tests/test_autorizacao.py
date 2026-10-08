@@ -109,6 +109,9 @@ ROTAS_PROTEGIDAS = [
     ("patch", "/formas-pagamento/1/status"),
     ("get", "/usuarios"),
     ("patch", "/usuarios/1"),
+    ("get", "/auditoria"),
+    ("get", "/exportacoes/produtos"),
+    ("get", "/exportacoes/relatorio-compras"),
 ]
 
 

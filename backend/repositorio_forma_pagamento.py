@@ -1,6 +1,9 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 COLUNAS = """
@@ -106,7 +109,7 @@ def listar_formas_pagamento(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao listar formas de pagamento: {erro}")
+        logger.error(f"Erro ao listar formas de pagamento: {erro}")
 
         return None
 
@@ -135,7 +138,7 @@ def buscar_forma_pagamento(forma_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao buscar forma de pagamento: {erro}")
+        logger.error(f"Erro ao buscar forma de pagamento: {erro}")
 
         return None
 
@@ -173,7 +176,7 @@ def _gravar(sql: str, parametros):
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao gravar forma de pagamento: {erro}")
+        logger.error(f"Erro ao gravar forma de pagamento: {erro}")
 
         return None, "erro_banco"
 

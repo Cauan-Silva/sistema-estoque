@@ -1,6 +1,9 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 def obter_resumo_estoque(limite_estoque=5):
@@ -115,7 +118,7 @@ def obter_resumo_estoque(limite_estoque=5):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao gerar resumo do estoque: {erro}"
         )
 
@@ -183,7 +186,7 @@ def listar_produtos_maior_valor(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             "Erro ao gerar relatório de "
             f"valor do estoque: {erro}"
         )

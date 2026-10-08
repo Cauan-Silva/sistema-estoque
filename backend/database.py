@@ -1,7 +1,10 @@
+import logging
 import os
 
 import psycopg2
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 
 load_dotenv()
@@ -20,7 +23,7 @@ def conectar():
         return conexao
 
     except psycopg2.Error as erro:
-        print(f"Erro ao conectar ao banco de dados: {erro}")
+        logger.error(f"Erro ao conectar ao banco de dados: {erro}")
         return None
 
 
@@ -449,6 +452,32 @@ def criar_tabela():
 
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS auditoria (
+                id BIGSERIAL PRIMARY KEY,
+                data_hora TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+                id_requisicao VARCHAR(32) NOT NULL,
+                usuario_id INTEGER
+                    REFERENCES usuarios(id)
+                    ON DELETE SET NULL,
+                metodo VARCHAR(10) NOT NULL,
+                caminho VARCHAR(300) NOT NULL,
+                status INTEGER NOT NULL,
+                ip VARCHAR(64),
+                duracao_ms INTEGER NOT NULL
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_auditoria_data_hora
+            ON auditoria (data_hora);
+            """
+        )
+
+        cursor.execute(
+            """
             ALTER TABLE cotacoes
             ADD COLUMN IF NOT EXISTS forma_pagamento_id INTEGER
                 REFERENCES formas_pagamento(id);
@@ -469,10 +498,10 @@ def criar_tabela():
         cursor.close()
         conexao.close()
 
-        print("Banco de dados preparado com sucesso.")
+        logger.info("Banco de dados preparado com sucesso.")
 
     except psycopg2.Error as erro:
-        print(f"Erro ao criar ou migrar tabelas: {erro}")
+        logger.error(f"Erro ao criar ou migrar tabelas: {erro}")
 
         conexao.rollback()
         conexao.close()

@@ -1,10 +1,18 @@
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.autenticacao import validar_token_acesso
 from backend.database import criar_tabela
+from backend.logs import configurar_logs
+from backend.repositorio_auditoria import registrar_auditoria
 
 from backend.routes.produtos import (
     router as produtos_router
@@ -36,6 +44,19 @@ from backend.routes.compras import (
 from backend.routes.formas_pagamento import (
     router as formas_pagamento_router
 )
+from backend.routes.auditoria import (
+    router as auditoria_router
+)
+from backend.routes.exportacoes import (
+    router as exportacoes_router
+)
+
+
+configurar_logs()
+
+logger = logging.getLogger("backend.requisicoes")
+
+METODOS_AUDITADOS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 @asynccontextmanager
@@ -43,6 +64,17 @@ async def lifespan(app: FastAPI):
     criar_tabela()
 
     yield
+
+
+def usuario_da_requisicao(request: Request) -> int | None:
+    cabecalho = request.headers.get("authorization", "")
+
+    if not cabecalho.lower().startswith("bearer "):
+        return None
+
+    dados = validar_token_acesso(cabecalho[7:])
+
+    return dados["usuario_id"] if dados else None
 
 
 app = FastAPI(
@@ -85,6 +117,8 @@ app.include_router(solicitacoes_compra_router)
 app.include_router(cotacoes_router)
 app.include_router(compras_router)
 app.include_router(formas_pagamento_router)
+app.include_router(auditoria_router)
+app.include_router(exportacoes_router)
 
 
 PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
@@ -108,3 +142,68 @@ if PASTA_FRONTEND.is_dir():
         FrontendSemCache(directory=PASTA_FRONTEND, html=True),
         name="frontend"
     )
+
+
+@app.middleware("http")
+async def registrar_requisicao(request: Request, chamar_proximo):
+    id_requisicao = uuid.uuid4().hex[:12]
+    inicio = time.perf_counter()
+
+    try:
+        resposta = await chamar_proximo(request)
+
+    except Exception:
+        logger.exception(
+            "Erro não tratado id=%s %s %s",
+            id_requisicao,
+            request.method,
+            request.url.path
+        )
+
+        resposta = JSONResponse(
+            status_code=500,
+            content={
+                "detail": (
+                    "Erro interno no servidor. "
+                    f"Código para suporte: {id_requisicao}."
+                )
+            }
+        )
+
+    duracao_ms = round((time.perf_counter() - inicio) * 1000)
+    caminho = request.url.path
+    usuario_id = usuario_da_requisicao(request)
+
+    resposta.headers["X-Request-ID"] = id_requisicao
+
+    if not caminho.startswith("/app"):
+        nivel = (
+            logging.ERROR if resposta.status_code >= 500
+            else logging.WARNING if resposta.status_code >= 400
+            else logging.INFO
+        )
+
+        logger.log(
+            nivel,
+            "%s %s %s %dms usuario=%s id=%s",
+            request.method,
+            caminho,
+            resposta.status_code,
+            duracao_ms,
+            usuario_id or "-",
+            id_requisicao
+        )
+
+    if request.method in METODOS_AUDITADOS and not caminho.startswith("/app"):
+        await run_in_threadpool(
+            registrar_auditoria,
+            id_requisicao,
+            usuario_id,
+            request.method,
+            caminho[:300],
+            resposta.status_code,
+            request.client.host if request.client else None,
+            duracao_ms
+        )
+
+    return resposta

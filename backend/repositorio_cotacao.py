@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -5,6 +6,8 @@ import psycopg2
 
 from backend.database import conectar
 from backend.repositorio_solicitacao_compra import buscar_solicitacao
+
+logger = logging.getLogger(__name__)
 
 
 STATUS_PERMITEM_COTACAO = ("ABERTA", "EM_COTACAO")
@@ -312,7 +315,7 @@ def criar_cotacao(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao criar cotação: {erro}")
+        logger.error(f"Erro ao criar cotação: {erro}")
 
         return None, "erro_banco"
 
@@ -348,7 +351,7 @@ def buscar_cotacao(solicitacao_id: int, cotacao_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao buscar cotação: {erro}")
+        logger.error(f"Erro ao buscar cotação: {erro}")
 
         return None
 
@@ -396,7 +399,7 @@ def listar_cotacoes(solicitacao_id: int):
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(f"Erro ao listar cotações: {erro}")
+        logger.error(f"Erro ao listar cotações: {erro}")
 
         return None
 
@@ -502,7 +505,7 @@ def atualizar_cotacao(
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao atualizar cotação: {erro}")
+        logger.error(f"Erro ao atualizar cotação: {erro}")
 
         return None, "erro_banco"
 
@@ -565,7 +568,7 @@ def excluir_cotacao(solicitacao_id: int, cotacao_id: int):
         conexao.rollback()
         conexao.close()
 
-        print(f"Erro ao excluir cotação: {erro}")
+        logger.error(f"Erro ao excluir cotação: {erro}")
 
         return "erro_banco"
 

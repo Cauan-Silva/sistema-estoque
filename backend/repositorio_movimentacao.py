@@ -1,6 +1,9 @@
+import logging
 import psycopg2
 
 from backend.database import conectar
+
+logger = logging.getLogger(__name__)
 
 
 def registrar_movimentacao(
@@ -117,7 +120,7 @@ def registrar_movimentacao(
         conexao.rollback()
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao registrar movimentação: {erro}"
         )
 
@@ -249,7 +252,7 @@ def listar_movimentacoes(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao listar movimentações: {erro}"
         )
 
@@ -306,7 +309,7 @@ def buscar_movimentacao_por_id(
     except psycopg2.Error as erro:
         conexao.close()
 
-        print(
+        logger.error(
             f"Erro ao buscar movimentação: {erro}"
         )
 
