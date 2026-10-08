@@ -15,6 +15,7 @@ import {
 import { formularioSolicitacao } from "./solicitacoes.js";
 import { abrirRegistroCompra } from "./acoes_compra.js";
 import { campoFormaPagamento } from "./formas_pagamento.js";
+import { pode, usuario } from "../sessao.js";
 
 const PODE_EDITAR = ["ABERTA"];
 const PODE_COTAR = ["ABERTA", "EM_COTACAO"];
@@ -112,6 +113,15 @@ export async function telaSolicitacao(area, id) {
 
   const recarregar = () => telaSolicitacao(area, id);
   const status = solicitacao.status;
+
+  const propria = solicitacao.solicitante_id === usuario()?.id;
+  const permite = {
+    editar: pode("solicitacoes.editar"),
+    cotar: pode("cotacoes.editar"),
+    decidir: pode("compras.aprovar") && !propria,
+    comprar: pode("compras.registrar"),
+    receber: pode("recebimentos.registrar"),
+  };
 
   /* ---------- Ações da solicitação ---------- */
 
@@ -298,7 +308,7 @@ export async function telaSolicitacao(area, id) {
 
   function cartaoCotacao(cotacao) {
     const aprovada = solicitacao.cotacao_aprovada_id === cotacao.id;
-    const podeAlterar = PODE_COTAR.includes(status);
+    const podeAlterar = PODE_COTAR.includes(status) && permite.cotar;
 
     return h(
       "article",
@@ -360,7 +370,7 @@ export async function telaSolicitacao(area, id) {
         item ? [h("strong", {}, item.fornecedor), h("div", { class: "numero" }, valor(item))] : h("strong", {}, "Sem cotação elegível")
       );
 
-    const podeAprovar = status === "EM_COTACAO";
+    const podeAprovar = status === "EM_COTACAO" && permite.decidir;
 
     const situacao = (c) => {
       if (c.vencida) return h("span", { class: "etiqueta" }, "Vencida");
@@ -433,10 +443,16 @@ export async function telaSolicitacao(area, id) {
     const passos = {
       ABERTA: [
         "Registre as cotações dos fornecedores para esta solicitação.",
-        h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação"),
+        permite.cotar
+          ? h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação")
+          : "Feito por: Comprador ou Administrador",
       ],
       EM_COTACAO: [
-        "Compare as cotações abaixo e aprove a melhor. Só cotações completas e dentro da validade podem ser aprovadas.",
+        propria && pode("compras.aprovar")
+          ? "Compare as cotações abaixo. Como foi você quem criou esta solicitação, a aprovação precisa ser feita por outra pessoa."
+          : permite.decidir
+            ? "Compare as cotações abaixo e aprove a melhor. Só cotações completas e dentro da validade podem ser aprovadas."
+            : "Compare as cotações abaixo. A aprovação é feita por um Aprovador ou Administrador.",
         h(
           "button",
           {
@@ -448,13 +464,17 @@ export async function telaSolicitacao(area, id) {
       ],
       APROVADA: [
         "A cotação foi aprovada. Registre a compra quando o pedido for feito ao fornecedor.",
-        h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra"),
+        permite.comprar
+          ? h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra")
+          : "Feito por: Comprador ou Administrador",
       ],
       COMPRADA: [
         compra && compra.situacao_recebimento === "PARCIAL"
           ? "Parte dos materiais já chegou. Registre o restante quando for entregue."
           : `Registre o recebimento quando os materiais chegarem. Previsão: ${compra ? formatar.data(compra.previsao_entrega) : "—"}.`,
-        h("button", { class: "primario", onClick: () => registrarRecebimento() }, "Registrar recebimento"),
+        permite.receber
+          ? h("button", { class: "primario", onClick: () => registrarRecebimento() }, "Registrar recebimento")
+          : "Feito por: Almoxarife ou Administrador",
       ],
     };
 
@@ -465,7 +485,7 @@ export async function telaSolicitacao(area, id) {
       "aside",
       { class: "proximo-passo", dataset: { cor: corStatus(status) } },
       h("div", {}, h("strong", {}, "Próximo passo"), h("p", {}, passo[0])),
-      passo[1]
+      typeof passo[1] === "string" ? h("span", { class: "responsavel" }, passo[1]) : passo[1]
     );
   }
 
@@ -480,7 +500,7 @@ export async function telaSolicitacao(area, id) {
           { class: "quadro" },
           vazio(
             "A cotação foi aprovada. Registre a compra quando o pedido for feito ao fornecedor.",
-            h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra")
+            permite.comprar ? h("button", { class: "primario", onClick: registrarCompra }, "Registrar compra") : null
           )
         )
       );
@@ -495,7 +515,7 @@ export async function telaSolicitacao(area, id) {
         "div",
         { class: "titulo-secao" },
         h("h2", {}, "Compra e recebimento"),
-        status === "COMPRADA"
+        status === "COMPRADA" && permite.receber
           ? h("button", { class: "primario", onClick: () => registrarRecebimento() }, "Registrar recebimento")
           : null
       ),
@@ -613,9 +633,9 @@ export async function telaSolicitacao(area, id) {
   /* ---------- Montagem ---------- */
 
   const acoes = [
-    PODE_EDITAR.includes(status) ? h("button", { onClick: editar }, "Editar itens") : null,
-    PODE_REPROVAR.includes(status) ? h("button", { class: "perigo", onClick: reprovar }, "Reprovar") : null,
-    PODE_CANCELAR.includes(status) ? h("button", { class: "perigo", onClick: cancelar }, "Cancelar") : null,
+    PODE_EDITAR.includes(status) && permite.editar ? h("button", { onClick: editar }, "Editar itens") : null,
+    PODE_REPROVAR.includes(status) && permite.decidir ? h("button", { class: "perigo", onClick: reprovar }, "Reprovar") : null,
+    PODE_CANCELAR.includes(status) && permite.editar ? h("button", { class: "perigo", onClick: cancelar }, "Cancelar") : null,
   ].filter(Boolean);
 
   const decisao =
@@ -671,7 +691,7 @@ export async function telaSolicitacao(area, id) {
             "div",
             { class: "titulo-secao" },
             h("h2", {}, "Cotações"),
-            PODE_COTAR.includes(status)
+            PODE_COTAR.includes(status) && permite.cotar
               ? h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação")
               : null
           ),

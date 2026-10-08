@@ -1,4 +1,5 @@
 import { api, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
   abrirFormulario,
   cabecalho,
@@ -307,6 +308,7 @@ export function campoFormaPagamento(valorInicial) {
 }
 
 export async function telaFormasPagamento(area) {
+  const podeEditar = pode("fornecedores.editar");
   function campos(forma = {}) {
     return [
       [
@@ -384,7 +386,7 @@ export async function telaFormasPagamento(area) {
 
   const grade = criarGrade({
     modo: "cadastro",
-    acoes: (forma) => [
+    acoes: (forma) => !podeEditar ? null : [
       h("button", { class: "pequeno", onClick: () => formulario(forma) }, "Editar"),
       h(
         "button",
@@ -398,7 +400,7 @@ export async function telaFormasPagamento(area) {
     cabecalho(
       "Formas de pagamento",
       "Condições de pagamento usadas nas cotações e copiadas para as compras.",
-      h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar forma de pagamento")
+      podeEditar ? h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar forma de pagamento") : null
     ),
     grade.elemento
   );

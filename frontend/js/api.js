@@ -159,3 +159,42 @@ export async function listarTodos(caminho, parametros = {}) {
 
   return resultado;
 }
+
+
+export async function baixarArquivo(caminho) {
+  const token = obterToken();
+  let resposta;
+
+  try {
+    resposta = await fetch(caminho, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ErroApi("Sem conexão com a API. Verifique se o servidor está rodando.", 0);
+  }
+
+  if (!resposta.ok) {
+    let dados = null;
+    try {
+      dados = await resposta.json();
+    } catch {
+      dados = null;
+    }
+    throw new ErroApi(mensagemDeErro(dados, resposta.status), resposta.status);
+  }
+
+  const disposicao = resposta.headers.get("Content-Disposition") || "";
+  const nome = /filename="([^"]+)"/.exec(disposicao)?.[1] || "exportacao";
+  const blob = await resposta.blob();
+  const endereco = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = endereco;
+  link.download = nome;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(endereco), 1000);
+
+  return nome;
+}

@@ -1,7 +1,9 @@
 import { api } from "../api.js";
+import { pode } from "../sessao.js";
 import { abrirFormulario, cabecalho, confirmar, executar, h, tabela } from "../ui.js";
 
 export async function telaCategorias(area) {
+  const podeEditar = pode("estoque.editar");
   const lista = h("div");
 
   function formulario(categoria) {
@@ -47,7 +49,7 @@ export async function telaCategorias(area) {
           {
             titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
             classe: "acoes",
-            valor: (c) => [
+            valor: (c) => !podeEditar ? null : [
               h("button", { class: "pequeno", onClick: () => formulario(c) }, "Renomear"),
               h("button", { class: "pequeno perigo", onClick: () => excluir(c) }, "Excluir"),
             ],
@@ -56,7 +58,7 @@ export async function telaCategorias(area) {
         categorias,
         {
           vazio: "Nenhuma categoria cadastrada.",
-          acaoVazio: h("button", { class: "primario", onClick: () => formulario() }, "Criar categoria"),
+          acaoVazio: podeEditar ? h("button", { class: "primario", onClick: () => formulario() }, "Criar categoria") : null,
         }
       )
     );
@@ -66,7 +68,7 @@ export async function telaCategorias(area) {
     cabecalho(
       "Categorias",
       "Agrupe os produtos por tipo para filtrar e organizar o estoque.",
-      h("button", { class: "primario", onClick: () => formulario() }, "Criar categoria")
+      podeEditar ? h("button", { class: "primario", onClick: () => formulario() }, "Criar categoria") : null
     ),
     lista
   );

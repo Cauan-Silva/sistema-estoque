@@ -1,5 +1,7 @@
 import { api, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
+  botoesExportar,
   cabecalho,
   campoFiltro,
   etiquetaStatus,
@@ -65,7 +67,7 @@ export async function telaCompras(area) {
               titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
               classe: "acoes",
               valor: (l) =>
-                h(
+                !pode("compras.registrar") ? null : h(
                   "button",
                   {
                     class: "pequeno primario",
@@ -125,7 +127,7 @@ export async function telaCompras(area) {
               h(
                 "a",
                 { class: "botao pequeno", href: `#/solicitacoes/${c.solicitacao_id}` },
-                c.situacao_recebimento === "COMPLETO" ? "Ver" : "Receber"
+                c.situacao_recebimento !== "COMPLETO" && pode("recebimentos.registrar") ? "Receber" : "Ver"
               ),
           },
         ],
@@ -155,7 +157,16 @@ export async function telaCompras(area) {
   }
 
   area.replaceChildren(
-    cabecalho("Compras", "Pedidos feitos aos fornecedores a partir das solicitações aprovadas."),
+    cabecalho(
+      "Compras",
+      "Pedidos feitos aos fornecedores a partir das solicitações aprovadas.",
+      botoesExportar("/exportacoes/compras", () => ({
+        fornecedor_id: filtros.fornecedor_id,
+        situacao_recebimento: filtros.situacao_recebimento,
+        data_inicio: filtros.data_inicio,
+        data_fim: filtros.data_fim,
+      }))
+    ),
     aguardando,
     h("h2", { style: { marginBottom: "12px" } }, "Compras registradas"),
     h(

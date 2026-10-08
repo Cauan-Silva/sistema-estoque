@@ -1,6 +1,8 @@
 import { api, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
   abrirFormulario,
+  botoesExportar,
   cabecalho,
   campoFiltro,
   confirmar,
@@ -15,6 +17,7 @@ import {
 const TAMANHO = 20;
 
 export async function telaProdutos(area) {
+  const podeEditar = pode("estoque.editar");
   const [categorias, fornecedores] = await Promise.all([
     api.get("/categorias"),
     api.get("/fornecedores"),
@@ -171,7 +174,7 @@ export async function telaProdutos(area) {
           {
             titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
             classe: "acoes",
-            valor: (p) => [
+            valor: (p) => !podeEditar ? null : [
               h("button", { class: "pequeno", onClick: () => movimentar(p, "ENTRADA") }, "Entrada"),
               h(
                 "button",
@@ -188,7 +191,7 @@ export async function telaProdutos(area) {
           vazio: filtros.busca || filtros.categoria_id || filtros.fornecedor_id || filtros.estoque_baixo
             ? "Nenhum produto encontrado com esses filtros."
             : "Nenhum produto cadastrado.",
-          acaoVazio: h("button", { class: "primario", onClick: novoProduto }, "Cadastrar produto"),
+          acaoVazio: podeEditar ? h("button", { class: "primario", onClick: novoProduto }, "Cadastrar produto") : null,
         }
       ),
       paginacao(filtros.pagina, produtos.length, TAMANHO, (pagina) => {
@@ -220,7 +223,13 @@ export async function telaProdutos(area) {
     cabecalho(
       "Produtos",
       "Cadastro de produtos e registro rápido de entradas e saídas.",
-      h("button", { class: "primario", onClick: novoProduto }, "Cadastrar produto")
+      botoesExportar("/exportacoes/produtos", () => ({
+        busca: filtros.busca,
+        categoria_id: filtros.categoria_id,
+        fornecedor_id: filtros.fornecedor_id,
+        estoque_baixo: filtros.estoque_baixo,
+      })),
+      podeEditar ? h("button", { class: "primario", onClick: novoProduto }, "Cadastrar produto") : null
     ),
     h(
       "div",

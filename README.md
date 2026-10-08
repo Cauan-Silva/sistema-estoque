@@ -109,6 +109,15 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Busca, ordenação por código, título ou tipo, e paginação
 - Seleção da forma de pagamento na cotação, exibida na comparação e copiada para a compra
 
+### Permissões, auditoria, logs e exportação
+
+- Perfis de usuário: Administrador, Comprador, Aprovador, Almoxarife e Consulta
+- Ninguém aprova ou reprova a própria solicitação
+- Administração de usuários (perfil e ativação) pelo administrador
+- Auditoria de todas as criações, alterações e exclusões
+- Logs da aplicação em console e arquivo, com código de requisição
+- Exportação para Excel e PDF de produtos, movimentações, fornecedores, compras e relatório de compras
+
 ### Qualidade e infraestrutura
 
 - Testes automatizados com Pytest
@@ -325,6 +334,8 @@ Telas disponíveis:
 - Compras, com as solicitações aguardando compra e a situação de cada entrega
 - Relatório de compras, com gráficos de valor por mês, situação das entregas e maiores fornecedores
 - Formas de pagamento, com a janela de seleção usada nas cotações
+- Usuários e Auditoria, visíveis só para administradores
+- Botões de exportação para Excel e PDF em Produtos, Movimentações, Fornecedores, Compras e Relatório de compras
 
 O tema pode ser automático (segue o sistema operacional), claro ou escuro. A escolha fica no menu lateral e na tela de entrada.
 
@@ -898,6 +909,63 @@ Todos os filtros são opcionais e o período considera a data da compra. A respo
 - compras com previsão vencida e entrega ainda incompleta;
 - resumos por fornecedor, por produto (com preço médio, menor e maior) e por mês.
 
+## Perfis e permissões
+
+| Ação | Administrador | Comprador | Aprovador | Almoxarife | Consulta |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Ver todas as telas e exportar | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Produtos, categorias e movimentações | ✓ | | | ✓ | |
+| Fornecedores e formas de pagamento | ✓ | ✓ | | | |
+| Criar, editar e cancelar solicitações | ✓ | ✓ | | ✓ | |
+| Cotações e registro da compra | ✓ | ✓ | | | |
+| Aprovar e reprovar | ✓ | | ✓ | | |
+| Registrar recebimento | ✓ | | | ✓ | |
+| Gerenciar usuários e ver a auditoria | ✓ | | | | |
+
+- O primeiro usuário de um banco novo é **Administrador**; os seguintes entram como **Consulta**.
+- Na atualização, os usuários que já existiam passaram a ser **Administrador**.
+- Ninguém pode aprovar ou reprovar uma solicitação criada por si.
+- Um administrador não pode remover o próprio acesso de administrador.
+- Ações sem permissão retornam `403`. No frontend, os botões correspondentes não aparecem.
+
+```text
+GET   /usuarios
+PATCH /usuarios/{usuario_id}
+```
+
+```json
+{ "perfil": "COMPRADOR", "ativo": true }
+```
+
+## Logs e auditoria
+
+Os logs vão para o console e para `logs/app.log` (até 5 arquivos de 5 MB). Cada requisição gera uma linha com método, endereço, status, tempo, usuário e um código que também é devolvido no cabeçalho `X-Request-ID`. Erros inesperados registram o rastreamento completo e devolvem esse código, para facilitar o suporte.
+
+Variáveis opcionais no `.env`:
+
+```env
+LOG_LEVEL=INFO
+LOG_DIR=logs
+```
+
+Toda criação, alteração ou exclusão (`POST`, `PUT`, `PATCH`, `DELETE`) fica registrada na tabela `auditoria`, com usuário, endereço, resultado, IP e duração. Administradores consultam em:
+
+```text
+GET /auditoria?usuario_id=1&metodo=POST&somente_falhas=true&data_inicio=2026-10-01&data_fim=2026-10-31
+```
+
+## Exportação
+
+```text
+GET /exportacoes/produtos?formato=xlsx
+GET /exportacoes/movimentacoes?formato=pdf&data_inicio=2026-10-01
+GET /exportacoes/fornecedores?formato=xlsx&ativo=true
+GET /exportacoes/compras?formato=pdf&situacao_recebimento=PENDENTE
+GET /exportacoes/relatorio-compras?formato=xlsx&data_inicio=2026-01-01
+```
+
+`formato` aceita `xlsx` (Excel) ou `pdf`. Os demais parâmetros são os mesmos filtros das telas. O Excel traz cabeçalho formatado, filtros, formatos de moeda e data e linha de totais; o relatório de compras sai com uma aba para cada resumo. No frontend, os botões **Excel** e **PDF** ficam no topo de cada tela e exportam o que está filtrado.
+
 ## Testes automatizados
 
 O projeto utiliza Pytest para validar o comportamento da aplicação.
@@ -944,6 +1012,10 @@ A suíte cobre atualmente:
 - registro e consulta de compras
 - recebimentos e entrada automática no estoque
 - relatório de compras
+- formas de pagamento
+- perfis e permissões
+- auditoria
+- exportação para Excel e PDF
 - validações da API
 
 O resultado de cada execução fica disponível na aba **Actions** do GitHub.
@@ -1025,9 +1097,9 @@ Próximas etapas:
 8. ~~Entrada automática dos materiais no estoque~~ (concluído)
 9. ~~Histórico e relatórios de compras~~ (concluído)
 10. ~~Dashboard~~ (painel no frontend)
-11. Exportação de dados para Excel/PDF
-12. Controle de permissões por usuário
-13. Logs da aplicação
+11. ~~Exportação de dados para Excel/PDF~~ (concluído)
+12. ~~Controle de permissões por usuário~~ (concluído)
+13. ~~Logs da aplicação~~ (concluído)
 14. Migrations com ferramenta dedicada
 15. Dockerização da aplicação
 16. Integração futura com APIs para consulta de preços

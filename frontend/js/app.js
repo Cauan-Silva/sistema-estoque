@@ -1,6 +1,9 @@
 import { api, obterToken, removerToken } from "./api.js";
 import { h, carregando, vazio } from "./ui.js";
 import { seletorTema } from "./tema.js";
+import { NOMES_PERFIS, definirUsuario, pode } from "./sessao.js";
+import { telaUsuarios } from "./telas/usuarios.js";
+import { telaAuditoria } from "./telas/auditoria.js";
 import { telaEntrar } from "./telas/entrar.js";
 import { telaPainel } from "./telas/painel.js";
 import { telaProdutos } from "./telas/produtos.js";
@@ -48,6 +51,8 @@ const ROTAS = [
   { padrao: /^#\/compras$/, tela: telaCompras },
   { padrao: /^#\/relatorio-compras$/, tela: telaRelatorioCompras },
   { padrao: /^#\/formas-pagamento$/, tela: telaFormasPagamento },
+  { padrao: /^#\/usuarios$/, tela: telaUsuarios, permissao: "usuarios.gerenciar" },
+  { padrao: /^#\/auditoria$/, tela: telaAuditoria, permissao: "auditoria.ver" },
 ];
 
 let usuarioAtual = null;
@@ -67,6 +72,7 @@ function marcaCabos() {
 function sair() {
   removerToken();
   usuarioAtual = null;
+  definirUsuario(null);
   estrutura = null;
   window.location.hash = "#/entrar";
 }
@@ -75,7 +81,19 @@ function montarEstrutura() {
   const menu = h(
     "nav",
     { class: "menu", "aria-label": "Principal" },
-    MENU.map((secao) => [
+    [
+      ...MENU,
+      {
+        grupo: "Administração",
+        itens: [
+          { caminho: "#/usuarios", texto: "Usuários", cor: "var(--fibra-ardosia)", permissao: "usuarios.gerenciar" },
+          { caminho: "#/auditoria", texto: "Auditoria", cor: "var(--fibra-ardosia)", permissao: "auditoria.ver" },
+        ],
+      },
+    ]
+      .map((secao) => ({ ...secao, itens: secao.itens.filter((item) => !item.permissao || pode(item.permissao)) }))
+      .filter((secao) => secao.itens.length)
+      .map((secao) => [
       h("div", { class: "menu-grupo" }, secao.grupo),
       secao.itens.map((item) =>
         h(
@@ -120,6 +138,7 @@ function montarEstrutura() {
         { class: "usuario" },
         h("strong", {}, usuarioAtual.nome),
         h("span", { class: "suave" }, usuarioAtual.email),
+        h("span", { class: "perfil-usuario" }, NOMES_PERFIS[usuarioAtual.perfil] || usuarioAtual.perfil),
         h("div", {}, h("button", { class: "pequeno", onClick: sair }, "Sair")),
         seletorTema()
       )
@@ -169,6 +188,7 @@ async function navegar() {
 
     try {
       usuarioAtual = await api.get("/usuarios/me");
+      definirUsuario(usuarioAtual);
     } catch (falha) {
       if (falha.status !== 401) {
         raiz.replaceChildren(
@@ -186,6 +206,13 @@ async function navegar() {
   marcarMenu(hash);
 
   const rota = ROTAS.find((item) => item.padrao.test(hash));
+
+  if (rota?.permissao && !pode(rota.permissao)) {
+    areaConteudo.replaceChildren(
+      vazio("Seu perfil não tem acesso a esta página.", h("a", { class: "botao", href: "#/painel" }, "Ir para o painel"))
+    );
+    return;
+  }
 
   if (!rota) {
     areaConteudo.replaceChildren(

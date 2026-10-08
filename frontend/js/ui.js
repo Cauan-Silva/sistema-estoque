@@ -1,3 +1,5 @@
+import { baixarArquivo, montarQuery } from "./api.js";
+
 export function h(tag, atributos = {}, ...filhos) {
   const elemento = document.createElement(tag);
 
@@ -340,4 +342,30 @@ export async function executar(acao, mensagemSucesso) {
     avisar(falha.message, "erro");
     return undefined;
   }
+}
+
+
+/* Botões "Excel" e "PDF" que baixam a exportação com os filtros atuais. */
+export function botoesExportar(caminho, obterFiltros = () => ({})) {
+  const exportar = (formato) => async (evento) => {
+    const botao = evento.currentTarget;
+    botao.disabled = true;
+
+    try {
+      const nome = await baixarArquivo(`${caminho}${montarQuery({ ...obterFiltros(), formato })}`);
+      avisar(`Arquivo ${nome} baixado.`);
+    } catch (falha) {
+      avisar(falha.message, "erro");
+    } finally {
+      botao.disabled = false;
+    }
+  };
+
+  return h(
+    "div",
+    { class: "exportar", role: "group", "aria-label": "Exportar" },
+    h("span", { class: "suave" }, "Exportar"),
+    h("button", { type: "button", class: "pequeno", onClick: exportar("xlsx") }, "Excel"),
+    h("button", { type: "button", class: "pequeno", onClick: exportar("pdf") }, "PDF")
+  );
 }

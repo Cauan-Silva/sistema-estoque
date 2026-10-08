@@ -1,6 +1,8 @@
 import { api, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
   abrirFormulario,
+  botoesExportar,
   cabecalho,
   campoFiltro,
   confirmar,
@@ -12,6 +14,7 @@ import {
 } from "../ui.js";
 
 export async function telaFornecedores(area) {
+  const podeEditar = pode("fornecedores.editar");
   const filtros = { ativo: "" };
   const lista = h("div");
 
@@ -92,7 +95,7 @@ export async function telaFornecedores(area) {
           {
             titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
             classe: "acoes",
-            valor: (f) => [
+            valor: (f) => !podeEditar ? null : [
               h("button", { class: "pequeno", onClick: () => formulario(f) }, "Editar"),
               h(
                 "button",
@@ -105,7 +108,7 @@ export async function telaFornecedores(area) {
         fornecedores,
         {
           vazio: filtros.ativo ? "Nenhum fornecedor com esse status." : "Nenhum fornecedor cadastrado.",
-          acaoVazio: h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar fornecedor"),
+          acaoVazio: podeEditar ? h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar fornecedor") : null,
         }
       )
     );
@@ -115,7 +118,8 @@ export async function telaFornecedores(area) {
     cabecalho(
       "Fornecedores",
       "Quem fornece os produtos e participa das cotações. Fornecedores são inativados, nunca excluídos.",
-      h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar fornecedor")
+      botoesExportar("/exportacoes/fornecedores", () => ({ ativo: filtros.ativo })),
+      podeEditar ? h("button", { class: "primario", onClick: () => formulario() }, "Cadastrar fornecedor") : null
     ),
     h(
       "div",

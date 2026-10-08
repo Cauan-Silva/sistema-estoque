@@ -1,4 +1,5 @@
 import { api, listarTodos, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
   abrirDialogo,
   cabecalho,
@@ -100,6 +101,7 @@ export function formularioSolicitacao({ produtos, solicitacao, aoSalvar }) {
 }
 
 export async function telaSolicitacoes(area) {
+  const podeCriar = pode("solicitacoes.editar");
   const produtos = await listarTodos("/produtos");
   const filtros = { status: "", apenas_minhas: false, pagina: 1 };
   const lista = h("div");
@@ -150,9 +152,11 @@ export async function telaSolicitacoes(area) {
           vazio: filtros.status || filtros.apenas_minhas
             ? "Nenhuma solicitação com esses filtros."
             : "Nenhuma solicitação de compra ainda.",
-          acaoVazio: produtos.length
-            ? h("button", { class: "primario", onClick: nova }, "Criar solicitação")
-            : h("a", { class: "botao", href: "#/produtos" }, "Cadastre produtos primeiro"),
+          acaoVazio: !podeCriar
+            ? null
+            : produtos.length
+              ? h("button", { class: "primario", onClick: nova }, "Criar solicitação")
+              : h("a", { class: "botao", href: "#/produtos" }, "Cadastre produtos primeiro"),
         }
       ),
       paginacao(filtros.pagina, solicitacoes.length, TAMANHO, (pagina) => {
@@ -166,7 +170,7 @@ export async function telaSolicitacoes(area) {
     cabecalho(
       "Solicitações de compra",
       "Cada solicitação passa por cotação, aprovação e registro da compra.",
-      h("button", { class: "primario", disabled: !produtos.length, onClick: nova }, "Criar solicitação")
+      podeCriar ? h("button", { class: "primario", disabled: !produtos.length, onClick: nova }, "Criar solicitação") : null
     ),
     h(
       "div",

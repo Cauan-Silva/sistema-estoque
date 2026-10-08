@@ -1,6 +1,6 @@
 import { api, montarQuery } from "../api.js";
 import { barraEmpilhada, barras, colunas } from "../graficos.js";
-import { cabecalho, campoFiltro, executar, formatar, h, seletor, tabela } from "../ui.js";
+import { botoesExportar, cabecalho, campoFiltro, executar, formatar, h, seletor, tabela } from "../ui.js";
 
 function inicioDoAno() {
   return `${new Date().getFullYear()}-01-01`;
@@ -193,7 +193,8 @@ export async function telaRelatorioCompras(area) {
   area.replaceChildren(
     cabecalho(
       "Relatório de compras",
-      "Quanto foi comprado, de quem, e se as entregas chegaram no prazo. O período considera a data da compra."
+      "Quanto foi comprado, de quem, e se as entregas chegaram no prazo. O período considera a data da compra.",
+      botoesExportar("/exportacoes/relatorio-compras", () => ({ ...filtros }))
     ),
     h(
       "div",

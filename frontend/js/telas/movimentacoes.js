@@ -1,6 +1,8 @@
 import { api, listarTodos, montarQuery } from "../api.js";
+import { pode } from "../sessao.js";
 import {
   abrirFormulario,
+  botoesExportar,
   cabecalho,
   campoFiltro,
   etiquetaStatus,
@@ -15,6 +17,7 @@ import {
 const TAMANHO = 20;
 
 export async function telaMovimentacoes(area) {
+  const podeEditar = pode("estoque.editar");
   const produtos = await listarTodos("/produtos");
   const opcoesProduto = produtos.map((p) => [p.id, p.nome]);
 
@@ -93,7 +96,7 @@ export async function telaMovimentacoes(area) {
         movimentacoes,
         {
           vazio: "Nenhuma movimentação encontrada.",
-          acaoVazio: produtos.length
+          acaoVazio: produtos.length && podeEditar
             ? h("button", { class: "primario", onClick: novaMovimentacao }, "Registrar movimentação")
             : null,
         }
@@ -117,11 +120,19 @@ export async function telaMovimentacoes(area) {
     cabecalho(
       "Movimentações",
       "Histórico de entradas e saídas. Cada registro atualiza a quantidade do produto.",
-      h(
-        "button",
-        { class: "primario", disabled: !produtos.length, onClick: novaMovimentacao },
-        "Registrar movimentação"
-      )
+      botoesExportar("/exportacoes/movimentacoes", () => ({
+        produto_id: filtros.produto_id,
+        tipo: filtros.tipo,
+        data_inicio: filtros.data_inicio,
+        data_fim: filtros.data_fim,
+      })),
+      podeEditar
+        ? h(
+            "button",
+            { class: "primario", disabled: !produtos.length, onClick: novaMovimentacao },
+            "Registrar movimentação"
+          )
+        : null
     ),
     h(
       "div",
