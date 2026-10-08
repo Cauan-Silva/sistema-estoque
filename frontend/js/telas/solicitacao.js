@@ -615,7 +615,7 @@ export async function telaSolicitacao(area, id) {
         ]
       : [];
 
-  area.replaceChildren(
+  const secoes = [
     h("a", { class: "voltar", href: "#/solicitacoes" }, "Voltar para solicitações"),
     h(
       "header",
@@ -672,5 +672,7 @@ export async function telaSolicitacao(area, id) {
               )
         )
       : null
-  );
+  ];
+
+  area.replaceChildren(...secoes.filter(Boolean));
 }

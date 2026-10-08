@@ -181,7 +181,7 @@ a {
 
 .estrutura {
   display: grid;
-  grid-template-columns: 232px 1fr;
+  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -277,6 +277,7 @@ a {
   padding: 32px 40px 64px;
   max-width: 1240px;
   width: 100%;
+  min-width: 0;
 }
 
 .cabecalho {
@@ -428,6 +429,7 @@ input[type="checkbox"] {
 /* ---------- Tabelas ---------- */
 
 .quadro {
+  position: relative;
   background: var(--superficie);
   border: 1px solid var(--linha);
   border-radius: var(--raio-grande);
@@ -574,7 +576,7 @@ tfoot td {
 
 .colunas {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -666,7 +668,7 @@ tfoot td {
 
 .destaques {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -904,7 +906,7 @@ dialog .erro {
 
 @media (max-width: 900px) {
   .estrutura {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .lateral {
@@ -953,7 +955,7 @@ dialog .erro {
 
   .colunas,
   .destaques {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .etapas {

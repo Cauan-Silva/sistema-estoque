@@ -85,9 +85,22 @@ app.include_router(compras_router)
 
 PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
+
+class FrontendSemCache(StaticFiles):
+    """Obriga o navegador a confirmar com o servidor se os arquivos mudaram.
+
+    Sem isso, depois de uma atualização o navegador pode continuar usando
+    versões antigas do JavaScript e do CSS.
+    """
+
+    def file_response(self, *args, **kwargs):
+        resposta = super().file_response(*args, **kwargs)
+        resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
+
 if PASTA_FRONTEND.is_dir():
     app.mount(
         "/app",
-        StaticFiles(directory=PASTA_FRONTEND, html=True),
+        FrontendSemCache(directory=PASTA_FRONTEND, html=True),
         name="frontend"
     )
