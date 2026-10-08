@@ -129,6 +129,16 @@ sistema-estoque/
 │   └── workflows/
 │       └── tests.yml
 │
+├── frontend/
+│   ├── css/
+│   │   └── app.css
+│   ├── js/
+│   │   ├── telas/
+│   │   ├── api.js
+│   │   ├── app.js
+│   │   └── ui.js
+│   └── index.html
+│
 ├── backend/
 │   ├── routes/
 │   │   ├── categorias.py
@@ -276,6 +286,32 @@ Swagger:
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+Frontend:
+
+```text
+http://127.0.0.1:8000/app/
+```
+
+## Frontend
+
+O frontend fica na pasta `frontend/` e é servido pela própria API em `/app/`. Ele usa apenas HTML, CSS e JavaScript, sem etapa de build e sem dependências de npm.
+
+Telas disponíveis:
+
+- Entrar e criar conta
+- Painel com valor em estoque, estoque baixo e compras em andamento
+- Produtos, com filtros e registro rápido de entrada e saída
+- Categorias
+- Movimentações, com filtros por produto, tipo e período
+- Fornecedores, com edição e ativação/inativação
+- Solicitações de compra
+- Detalhe da solicitação: itens, cotações, comparação, aprovação, reprovação e registro da compra
+- Compras
+
+O token de acesso fica salvo no navegador. Quando ele expira, o frontend volta para a tela de entrada.
+
+Os status usam o código de cores da fibra óptica: azul para aberta, laranja para em cotação, verde para aprovada, marrom para comprada, ardósia para cancelada e vermelho para reprovada.
 
 ## Autenticação
 
@@ -895,7 +931,7 @@ Próximas etapas:
 7. Recebimento de materiais
 8. Entrada automática dos materiais no estoque
 9. Histórico e relatórios de compras
-10. Dashboard
+10. ~~Dashboard~~ (painel no frontend)
 11. Exportação de dados para Excel/PDF
 12. Controle de permissões por usuário
 13. Logs da aplicação

@@ -8,3 +8,10 @@ def test_health(client):
     assert resposta.json() == {
         "status": "online"
     }
+
+def test_frontend_disponivel(client):
+    resposta = client.get("/app/")
+
+    assert resposta.status_code == 200
+    assert "text/html" in resposta.headers["content-type"]
+    assert "Estoque" in resposta.text

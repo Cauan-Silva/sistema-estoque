@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.database import criar_tabela
 
@@ -79,3 +81,13 @@ app.include_router(fornecedores_router)
 app.include_router(solicitacoes_compra_router)
 app.include_router(cotacoes_router)
 app.include_router(compras_router)
+
+
+PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+
+if PASTA_FRONTEND.is_dir():
+    app.mount(
+        "/app",
+        StaticFiles(directory=PASTA_FRONTEND, html=True),
+        name="frontend"
+    )
