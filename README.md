@@ -102,6 +102,13 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Indicação de entrega no prazo ou com atraso
 - Relatório de compras por período, fornecedor, produto e mês
 
+### Formas de pagamento
+
+- Cadastro de formas de pagamento com código, título, tipo, parcelas e intervalo
+- Lista padrão: À vista, Dia específico e A prazo de 1X a 12X
+- Busca, ordenação por código, título ou tipo, e paginação
+- Seleção da forma de pagamento na cotação, exibida na comparação e copiada para a compra
+
 ### Qualidade e infraestrutura
 
 - Testes automatizados com Pytest
@@ -308,7 +315,7 @@ O frontend fica na pasta `frontend/` e é servido pela própria API em `/app/`. 
 Telas disponíveis:
 
 - Entrar e criar conta
-- Painel com valor em estoque, estoque baixo e compras em andamento
+- Painel com valor em estoque, gráficos de valor por categoria e de entradas e saídas por mês, estoque baixo e compras em andamento
 - Produtos, com filtros e registro rápido de entrada e saída
 - Categorias
 - Movimentações, com filtros por produto, tipo e período
@@ -316,7 +323,8 @@ Telas disponíveis:
 - Solicitações de compra
 - Detalhe da solicitação: próximo passo, itens, cotações, comparação, aprovação, reprovação, registro da compra e recebimento
 - Compras, com as solicitações aguardando compra e a situação de cada entrega
-- Relatório de compras
+- Relatório de compras, com gráficos de valor por mês, situação das entregas e maiores fornecedores
+- Formas de pagamento, com a janela de seleção usada nas cotações
 
 O tema pode ser automático (segue o sistema operacional), claro ou escuro. A escolha fica no menu lateral e na tela de entrada.
 
@@ -461,6 +469,18 @@ GET  /solicitacoes-compra/{solicitacao_id}/compra/recebimentos
 ```text
 GET /relatorios/compras
 ```
+
+### Formas de pagamento
+
+```text
+GET   /formas-pagamento?busca=prazo&tipo=A_PRAZO&ativo=true&ordem=codigo&decrescente=false&pagina=1&tamanho=10
+GET   /formas-pagamento/{forma_id}
+POST  /formas-pagamento
+PUT   /formas-pagamento/{forma_id}
+PATCH /formas-pagamento/{forma_id}/status
+```
+
+A listagem devolve `total`, `pagina`, `tamanho` e `itens`. A cotação aceita `forma_pagamento_id` (opcional, precisa estar ativa) e a compra guarda o código e o título da forma aprovada.
 
 ## Produtos
 

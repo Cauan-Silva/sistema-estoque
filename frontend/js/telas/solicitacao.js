@@ -14,6 +14,7 @@ import {
 } from "../ui.js";
 import { formularioSolicitacao } from "./solicitacoes.js";
 import { abrirRegistroCompra } from "./acoes_compra.js";
+import { campoFormaPagamento } from "./formas_pagamento.js";
 
 const PODE_EDITAR = ["ABERTA"];
 const PODE_COTAR = ["ABERTA", "EM_COTACAO"];
@@ -214,6 +215,12 @@ export async function telaSolicitacao(area, id) {
       )
     );
 
+    const formaPagamento = campoFormaPagamento(
+      cotacao?.forma_pagamento_id
+        ? { id: cotacao.forma_pagamento_id, descricao: cotacao.forma_pagamento }
+        : null
+    );
+
     const valorCampo = (nome, valor) =>
       h("input", { name: nome, type: "number", min: 0, step: nome === "frete" ? "0.01" : 1, required: nome !== "frete", value: valor ?? "" });
 
@@ -229,6 +236,7 @@ export async function telaSolicitacao(area, id) {
           h("label", {}, "Frete (R$)", valorCampo("frete", cotacao?.frete ?? 0)),
           h("label", {}, "Prazo de entrega (dias)", valorCampo("prazo_entrega_dias", cotacao?.prazo_entrega_dias))
         ),
+        formaPagamento.elemento,
         h("label", {}, "Válida até", h("input", { type: "date", name: "validade", value: cotacao?.validade ?? "" })),
         h("label", {}, "Observação", h("textarea", { name: "observacao", maxlength: "500" }, cotacao?.observacao ?? "")),
       ],
@@ -253,6 +261,7 @@ export async function telaSolicitacao(area, id) {
           prazo_entrega_dias: Number(campos.prazo_entrega_dias.value),
           validade: campos.validade.value || null,
           observacao: campos.observacao.value.trim() || null,
+          forma_pagamento_id: formaPagamento.valor(),
           itens,
         };
 
@@ -305,6 +314,7 @@ export async function telaSolicitacao(area, id) {
             "p",
             {},
             `Entrega em ${formatar.dias(cotacao.prazo_entrega_dias)}`,
+            cotacao.forma_pagamento ? `, pagamento ${cotacao.forma_pagamento}` : "",
             cotacao.validade ? `, válida até ${formatar.data(cotacao.validade)}` : "",
             cotacao.observacao ? `. ${cotacao.observacao}` : ""
           )
@@ -382,6 +392,7 @@ export async function telaSolicitacao(area, id) {
           { titulo: "Frete", classe: "direita numero", valor: (c) => formatar.moeda(c.frete) },
           { titulo: "Total", classe: "direita numero", valor: (c) => h("strong", {}, formatar.moeda(c.valor_total)) },
           { titulo: "Prazo", classe: "direita numero", valor: (c) => formatar.dias(c.prazo_entrega_dias) },
+          { titulo: "Pagamento", valor: (c) => c.forma_pagamento || h("span", { class: "suave" }, "—") },
           podeAprovar
             ? {
                 titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
@@ -495,6 +506,7 @@ export async function telaSolicitacao(area, id) {
         ["Previsão de entrega", formatar.data(compra.previsao_entrega)],
         ["Comprador", compra.comprador],
         ["Valor total", h("span", { class: "numero" }, formatar.moeda(compra.valor_total))],
+        ["Forma de pagamento", compra.forma_pagamento || "—"],
         ["Entrega", etiquetaStatus(compra.situacao_recebimento)],
         compra.entregue_no_prazo === null
           ? null

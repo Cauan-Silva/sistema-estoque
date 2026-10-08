@@ -5,7 +5,7 @@ export function abrirRegistroCompra({ solicitacaoId, cotacao, aoConcluir }) {
   abrirFormulario({
     titulo: `Registrar compra da solicitação Nº ${solicitacaoId}`,
     descricao: cotacao
-      ? `${cotacao.fornecedor}: ${formatar.moeda(cotacao.valor_total)}. Se a previsão ficar vazia, ela é calculada com o prazo de ${formatar.dias(cotacao.prazo_entrega_dias)}.`
+      ? `${cotacao.fornecedor}: ${formatar.moeda(cotacao.valor_total)}${cotacao.forma_pagamento ? `, pagamento ${cotacao.forma_pagamento}` : ""}. Se a previsão ficar vazia, ela é calculada com o prazo de ${formatar.dias(cotacao.prazo_entrega_dias)}.`
       : undefined,
     campos: [
       { nome: "numero_pedido", rotulo: "Número do pedido", maximo: 50 },

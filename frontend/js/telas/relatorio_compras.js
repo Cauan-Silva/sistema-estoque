@@ -1,4 +1,5 @@
 import { api, montarQuery } from "../api.js";
+import { barraEmpilhada, barras, colunas } from "../graficos.js";
 import { cabecalho, campoFiltro, executar, formatar, h, seletor, tabela } from "../ui.js";
 
 function inicioDoAno() {
@@ -68,6 +69,42 @@ export async function telaRelatorioCompras(area) {
           "Atrasadas sem entrega",
           formatar.numero(dados.atrasadas_em_aberto),
           dados.atrasadas_em_aberto > 0
+        )
+      ),
+      h(
+        "div",
+        { class: "graficos" },
+        colunas({
+          titulo: "Valor comprado por mês",
+          itens: dados.por_mes.map((m) => ({ rotulo: nomeMes(m.mes), valor: m.valor_total })),
+          formatar: formatar.moeda,
+          vazio: "Nenhuma compra no período.",
+        }),
+        h(
+          "div",
+          { class: "pilha-graficos" },
+          barraEmpilhada({
+            titulo: "Situação das entregas",
+            descricao: "Compras do período pela situação da entrega.",
+            partes: [
+              { nome: "No prazo", valor: dados.entregas_no_prazo, cor: "var(--grafico-1)" },
+              { nome: "Com atraso", valor: dados.entregas_atrasadas, cor: "var(--grafico-2)" },
+              {
+                nome: "Ainda não entregues",
+                valor: dados.compras_parciais + dados.compras_pendentes,
+                cor: "var(--grafico-3)",
+              },
+            ],
+            formatar: (valor) => `${formatar.numero(valor)} compra${valor === 1 ? "" : "s"}`,
+            vazio: "Nenhuma compra no período.",
+          }),
+          barras({
+            titulo: "Maiores fornecedores",
+            itens: dados.por_fornecedor.slice(0, 5).map((f) => ({ rotulo: f.fornecedor, valor: f.valor_total })),
+            formatar: formatar.moeda,
+            cor: "var(--grafico-1)",
+            vazio: "Nenhuma compra no período.",
+          })
         )
       ),
       h(
