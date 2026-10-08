@@ -1,8 +1,10 @@
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 import psycopg2
 
 from backend.database import conectar
+from backend.repositorio_solicitacao_compra import buscar_solicitacao
 
 
 STATUS_PERMITEM_COTACAO = ("ABERTA", "EM_COTACAO")
@@ -518,3 +520,142 @@ def excluir_cotacao(solicitacao_id: int, cotacao_id: int):
         print(f"Erro ao excluir cotação: {erro}")
 
         return "erro_banco"
+
+
+def cotacao_vencida(cotacao, hoje=None) -> bool:
+    hoje = hoje or date.today()
+
+    return (
+        cotacao["validade"] is not None
+        and cotacao["validade"] < hoje
+    )
+
+
+def cotacao_completa(cotacao, produtos_solicitados) -> bool:
+    produtos_cotados = {
+        item["produto_id"] for item in cotacao["itens"]
+    }
+
+    return produtos_cotados == set(produtos_solicitados)
+
+
+def _resumo(cotacao):
+    return {
+        "cotacao_id": cotacao["id"],
+        "fornecedor_id": cotacao["fornecedor_id"],
+        "fornecedor": cotacao["fornecedor"],
+        "valor_total": cotacao["valor_total"],
+        "frete": cotacao["frete"],
+        "prazo_entrega_dias": cotacao["prazo_entrega_dias"],
+        "validade": cotacao["validade"],
+    }
+
+
+def comparar_cotacoes(solicitacao_id: int):
+    solicitacao = buscar_solicitacao(solicitacao_id)
+
+    if solicitacao is None:
+        return None
+
+    cotacoes = listar_cotacoes(solicitacao_id) or []
+
+    produtos_solicitados = [
+        item["produto_id"] for item in solicitacao["itens"]
+    ]
+
+    ranking = []
+
+    for cotacao in cotacoes:
+        completa = cotacao_completa(cotacao, produtos_solicitados)
+        vencida = cotacao_vencida(cotacao)
+
+        ranking.append({
+            **_resumo(cotacao),
+            "valor_itens": cotacao["valor_itens"],
+            "itens_cotados": len(cotacao["itens"]),
+            "cobre_todos_itens": completa,
+            "vencida": vencida,
+            "elegivel": completa and not vencida,
+        })
+
+    ranking.sort(
+        key=lambda c: (
+            not c["elegivel"],
+            c["valor_total"],
+            c["prazo_entrega_dias"],
+        )
+    )
+
+    elegiveis = [c for c in ranking if c["elegivel"]]
+
+    def destaque(chave):
+        if not elegiveis:
+            return None
+
+        melhor = min(
+            elegiveis,
+            key=lambda c: (c[chave], c["valor_total"])
+        )
+
+        return {
+            campo: melhor[campo]
+            for campo in (
+                "cotacao_id",
+                "fornecedor_id",
+                "fornecedor",
+                "valor_total",
+                "frete",
+                "prazo_entrega_dias",
+                "validade",
+            )
+        }
+
+    por_produto = []
+
+    for item in solicitacao["itens"]:
+        ofertas = [
+            (cotacao, item_cotado)
+            for cotacao in cotacoes
+            if not cotacao_vencida(cotacao)
+            for item_cotado in cotacao["itens"]
+            if item_cotado["produto_id"] == item["produto_id"]
+        ]
+
+        melhor = (
+            min(
+                ofertas,
+                key=lambda oferta: (
+                    oferta[1]["preco_unitario"],
+                    oferta[0]["prazo_entrega_dias"],
+                )
+            )
+            if ofertas
+            else None
+        )
+
+        por_produto.append({
+            "produto_id": item["produto_id"],
+            "produto": item["produto"],
+            "quantidade": item["quantidade"],
+            "quantidade_ofertas": len(ofertas),
+            "melhor_preco_unitario": (
+                melhor[1]["preco_unitario"] if melhor else None
+            ),
+            "cotacao_id": melhor[0]["id"] if melhor else None,
+            "fornecedor_id": (
+                melhor[0]["fornecedor_id"] if melhor else None
+            ),
+            "fornecedor": melhor[0]["fornecedor"] if melhor else None,
+        })
+
+    return {
+        "solicitacao_id": solicitacao_id,
+        "status_solicitacao": solicitacao["status"],
+        "total_cotacoes": len(cotacoes),
+        "cotacoes_elegiveis": len(elegiveis),
+        "menor_valor_total": destaque("valor_total"),
+        "menor_prazo": destaque("prazo_entrega_dias"),
+        "menor_frete": destaque("frete"),
+        "cotacoes": ranking,
+        "por_produto": por_produto,
+    }

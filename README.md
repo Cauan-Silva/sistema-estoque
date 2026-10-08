@@ -82,6 +82,17 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Cálculo automático de subtotal por item, valor dos itens e valor total
 - Uma cotação por fornecedor em cada solicitação
 - Atualização e exclusão de cotações
+- Comparação de cotações por valor total, prazo, frete e preço por produto
+
+### Aprovação e compras
+
+- Aprovação de uma cotação completa e dentro da validade
+- Reprovação de solicitações com justificativa obrigatória
+- Registro de quem decidiu, quando e por quê
+- Registro da compra a partir da solicitação aprovada
+- Cópia dos valores aprovados no registro da compra
+- Previsão de entrega calculada pelo prazo da cotação
+- Consulta de compras com filtro por fornecedor e paginação
 
 ### Qualidade e infraestrutura
 
@@ -121,6 +132,7 @@ sistema-estoque/
 ├── backend/
 │   ├── routes/
 │   │   ├── categorias.py
+│   │   ├── compras.py
 │   │   ├── cotacoes.py
 │   │   ├── fornecedores.py
 │   │   ├── movimentacoes.py
@@ -131,6 +143,7 @@ sistema-estoque/
 │   │
 │   ├── schemas/
 │   │   ├── categoria.py
+│   │   ├── compra.py
 │   │   ├── cotacao.py
 │   │   ├── fornecedor.py
 │   │   ├── movimentacao.py
@@ -140,10 +153,14 @@ sistema-estoque/
 │   │   └── usuario.py
 │   │
 │   ├── tests/
+│   │   ├── apoio_compras.py
 │   │   ├── conftest.py
 │   │   ├── test_autenticacao.py
+│   │   ├── test_aprovacao.py
 │   │   ├── test_autorizacao.py
 │   │   ├── test_categorias.py
+│   │   ├── test_comparacao_cotacoes.py
+│   │   ├── test_compras.py
 │   │   ├── test_cotacoes.py
 │   │   ├── test_fornecedores.py
 │   │   ├── test_health.py
@@ -158,7 +175,9 @@ sistema-estoque/
 │   ├── main.py
 │   ├── produto.py
 │   ├── repositorio.py
+│   ├── repositorio_aprovacao.py
 │   ├── repositorio_categoria.py
+│   ├── repositorio_compra.py
 │   ├── repositorio_cotacao.py
 │   ├── repositorio_fornecedor.py
 │   ├── repositorio_movimentacao.py
@@ -364,6 +383,23 @@ GET    /solicitacoes-compra/{solicitacao_id}/cotacoes
 GET    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
 PUT    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
 DELETE /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
+GET    /solicitacoes-compra/{solicitacao_id}/cotacoes/comparacao
+```
+
+### Aprovação
+
+```text
+PATCH /solicitacoes-compra/{solicitacao_id}/aprovar
+PATCH /solicitacoes-compra/{solicitacao_id}/reprovar
+```
+
+### Compras
+
+```text
+POST /solicitacoes-compra/{solicitacao_id}/compra
+GET  /solicitacoes-compra/{solicitacao_id}/compra
+GET  /compras
+GET  /compras/{compra_id}
 ```
 
 ## Produtos
@@ -623,8 +659,21 @@ Status:
 |---|---|
 | `ABERTA` | Solicitação criada, pode ser editada ou cancelada |
 | `EM_COTACAO` | Possui pelo menos uma cotação; os itens ficam congelados, mas ainda pode ser cancelada |
+| `APROVADA` | Uma cotação foi aprovada; aguarda o registro da compra e ainda pode ser cancelada |
+| `REPROVADA` | Solicitação reprovada, não pode mais ser alterada |
+| `COMPRADA` | Compra registrada |
 | `CANCELADA` | Solicitação cancelada, não pode mais ser alterada |
-| `APROVADA`, `REPROVADA`, `COMPRADA`, `RECEBIDA` | Reservados para as próximas etapas do fluxo de compras |
+| `RECEBIDA` | Reservado para o recebimento dos materiais |
+
+Fluxo completo:
+
+```text
+ABERTA → EM_COTACAO → APROVADA → COMPRADA
+
+ABERTA ou EM_COTACAO            → REPROVADA
+ABERTA, EM_COTACAO ou APROVADA  → CANCELADA
+EM_COTACAO (sem cotações)       → ABERTA
+```
 
 ## Cotações
 
@@ -658,6 +707,72 @@ Fluxo:
 - A primeira cotação muda a solicitação de `ABERTA` para `EM_COTACAO`.
 - Excluir a última cotação devolve a solicitação para `ABERTA`.
 - Cotações só podem ser registradas, editadas ou excluídas enquanto a solicitação está `ABERTA` ou `EM_COTACAO`.
+
+## Comparação de cotações
+
+```text
+GET /solicitacoes-compra/{solicitacao_id}/cotacoes/comparacao
+```
+
+A resposta traz:
+
+- `cotacoes`: todas as cotações, primeiro as elegíveis, ordenadas por valor total e depois por prazo;
+- `menor_valor_total`, `menor_prazo` e `menor_frete`: destaques entre as cotações elegíveis;
+- `por_produto`: o melhor preço unitário de cada produto entre as cotações dentro da validade.
+
+Uma cotação é **elegível** quando cobre todos os itens da solicitação e não está vencida. Cada cotação indica `cobre_todos_itens`, `vencida` e `elegivel`.
+
+## Aprovação
+
+Aprovar:
+
+```json
+{
+  "cotacao_id": 2,
+  "justificativa": "Menor valor total"
+}
+```
+
+Reprovar:
+
+```json
+{
+  "justificativa": "Valores acima do orçamento"
+}
+```
+
+- Só solicitações `EM_COTACAO` podem ser aprovadas.
+- A cotação aprovada precisa cobrir todos os itens e estar dentro da validade.
+- Solicitações `ABERTA` ou `EM_COTACAO` podem ser reprovadas, sempre com justificativa.
+- A resposta registra `cotacao_aprovada_id`, `decisao_por`, `data_decisao` e `justificativa_decisao`.
+
+## Compras
+
+Registrar a compra de uma solicitação aprovada:
+
+```json
+{
+  "numero_pedido": "PED-001",
+  "data_compra": "2026-10-01",
+  "previsao_entrega": "2026-10-11",
+  "observacao": "Pago via boleto"
+}
+```
+
+Todos os campos são opcionais:
+
+- `data_compra` usa a data atual quando não é informada;
+- `previsao_entrega` usa a data da compra somada ao prazo da cotação aprovada.
+
+A compra guarda uma cópia do fornecedor, dos itens, dos preços, do frete e do valor total da cotação aprovada. A solicitação passa para `COMPRADA`.
+
+Consultas:
+
+```text
+GET /compras?fornecedor_id=1&pagina=1&tamanho=10
+GET /compras/{compra_id}
+GET /solicitacoes-compra/{solicitacao_id}/compra
+```
 
 ## Testes automatizados
 
@@ -700,6 +815,9 @@ A suíte cobre atualmente:
 - vínculo entre produtos e fornecedores
 - solicitações de compra
 - cotações
+- comparação de cotações
+- aprovação e reprovação
+- registro e consulta de compras
 - validações da API
 
 O resultado de cada execução fica disponível na aba **Actions** do GitHub.
@@ -755,6 +873,11 @@ O workflow está localizado em:
 - Cada fornecedor pode ter apenas uma cotação por solicitação.
 - Cotações só aceitam fornecedores ativos e produtos da própria solicitação.
 - Uma cotação pode cobrir apenas parte dos itens da solicitação.
+- Só cotações completas e dentro da validade podem ser aprovadas.
+- Reprovações exigem justificativa.
+- Solicitações aprovadas ainda podem ser canceladas até o registro da compra.
+- Cada solicitação aprovada gera no máximo uma compra.
+- A compra guarda uma cópia dos valores aprovados.
 - Produtos vinculados a solicitações de compra não podem ser excluídos.
 
 ## Próximas funcionalidades
@@ -766,9 +889,9 @@ Próximas etapas:
 1. ~~CRUD completo de fornecedores~~ (concluído)
 2. ~~Solicitações de compra~~ (concluído)
 3. ~~Registro de cotações por fornecedor~~ (concluído)
-4. Comparação de preços, frete e prazo
-5. Aprovação de compras
-6. Registro da compra realizada
+4. ~~Comparação de preços, frete e prazo~~ (concluído)
+5. ~~Aprovação de compras~~ (concluído)
+6. ~~Registro da compra realizada~~ (concluído)
 7. Recebimento de materiais
 8. Entrada automática dos materiais no estoque
 9. Histórico e relatórios de compras

@@ -4,7 +4,7 @@ from backend.database import conectar
 
 
 STATUS_EDITAVEIS = ("ABERTA",)
-STATUS_CANCELAVEIS = ("ABERTA", "EM_COTACAO")
+STATUS_CANCELAVEIS = ("ABERTA", "EM_COTACAO", "APROVADA")
 
 
 def _buscar_itens(cursor, solicitacao_id: int):
@@ -44,6 +44,11 @@ def _montar_solicitacao(cursor, registro):
         "observacao": registro[4],
         "data_criacao": registro[5],
         "data_atualizacao": registro[6],
+        "cotacao_aprovada_id": registro[7],
+        "decisao_por_id": registro[8],
+        "decisao_por": registro[9],
+        "data_decisao": registro[10],
+        "justificativa_decisao": registro[11],
         "itens": _buscar_itens(cursor, registro[0])
     }
 
@@ -56,10 +61,17 @@ CONSULTA_SOLICITACAO = """
         s.status,
         s.observacao,
         s.data_criacao,
-        s.data_atualizacao
+        s.data_atualizacao,
+        s.cotacao_aprovada_id,
+        s.decisao_por_id,
+        d.nome,
+        s.data_decisao,
+        s.justificativa_decisao
     FROM solicitacoes_compra s
     JOIN usuarios u
         ON u.id = s.solicitante_id
+    LEFT JOIN usuarios d
+        ON d.id = s.decisao_por_id
 """
 
 

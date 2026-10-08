@@ -269,6 +269,60 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            ALTER TABLE solicitacoes_compra
+            ADD COLUMN IF NOT EXISTS cotacao_aprovada_id INTEGER
+                REFERENCES cotacoes(id),
+            ADD COLUMN IF NOT EXISTS decisao_por_id INTEGER
+                REFERENCES usuarios(id),
+            ADD COLUMN IF NOT EXISTS data_decisao TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS justificativa_decisao VARCHAR(500);
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS compras (
+                id SERIAL PRIMARY KEY,
+                solicitacao_id INTEGER NOT NULL UNIQUE
+                    REFERENCES solicitacoes_compra(id),
+                cotacao_id INTEGER NOT NULL
+                    REFERENCES cotacoes(id),
+                fornecedor_id INTEGER NOT NULL
+                    REFERENCES fornecedores(id),
+                comprador_id INTEGER NOT NULL
+                    REFERENCES usuarios(id),
+                numero_pedido VARCHAR(50),
+                data_compra DATE NOT NULL,
+                previsao_entrega DATE NOT NULL,
+                valor_itens NUMERIC(12, 2) NOT NULL,
+                frete NUMERIC(10, 2) NOT NULL,
+                valor_total NUMERIC(12, 2) NOT NULL,
+                observacao VARCHAR(500),
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS itens_compra (
+                id SERIAL PRIMARY KEY,
+                compra_id INTEGER NOT NULL
+                    REFERENCES compras(id)
+                    ON DELETE CASCADE,
+                produto_id INTEGER NOT NULL
+                    REFERENCES produtos(id),
+                quantidade INTEGER NOT NULL
+                    CHECK (quantidade > 0),
+                preco_unitario NUMERIC(10, 2) NOT NULL,
+                subtotal NUMERIC(12, 2) NOT NULL
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()

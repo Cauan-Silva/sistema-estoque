@@ -66,3 +66,44 @@ class CotacaoResposta(BaseModel):
     itens: list[ItemCotacaoResposta]
     valor_itens: float
     valor_total: float
+
+
+class CotacaoDestaque(BaseModel):
+    cotacao_id: int
+    fornecedor_id: int
+    fornecedor: str
+    valor_total: float
+    frete: float
+    prazo_entrega_dias: int
+    validade: date | None
+
+
+class CotacaoComparada(CotacaoDestaque):
+    valor_itens: float
+    itens_cotados: int
+    cobre_todos_itens: bool
+    vencida: bool
+    elegivel: bool
+
+
+class MelhorPrecoProduto(BaseModel):
+    produto_id: int
+    produto: str
+    quantidade: int
+    quantidade_ofertas: int
+    melhor_preco_unitario: float | None
+    cotacao_id: int | None
+    fornecedor_id: int | None
+    fornecedor: str | None
+
+
+class ComparacaoCotacoesResposta(BaseModel):
+    solicitacao_id: int
+    status_solicitacao: str
+    total_cotacoes: int
+    cotacoes_elegiveis: int
+    menor_valor_total: CotacaoDestaque | None
+    menor_prazo: CotacaoDestaque | None
+    menor_frete: CotacaoDestaque | None
+    cotacoes: list[CotacaoComparada]
+    por_produto: list[MelhorPrecoProduto]

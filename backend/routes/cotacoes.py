@@ -9,11 +9,13 @@ from backend.autenticacao import obter_usuario_atual
 from backend.repositorio_cotacao import (
     atualizar_cotacao,
     buscar_cotacao,
+    comparar_cotacoes,
     criar_cotacao,
     excluir_cotacao,
     listar_cotacoes,
 )
 from backend.schemas.cotacao import (
+    ComparacaoCotacoesResposta,
     CotacaoAtualizacao,
     CotacaoCriacao,
     CotacaoResposta,
@@ -119,6 +121,19 @@ def listar(solicitacao_id: int):
         tratar_erro("solicitacao_nao_encontrada", "")
 
     return cotacoes
+
+
+@router.get(
+    "/comparacao",
+    response_model=ComparacaoCotacoesResposta
+)
+def comparar(solicitacao_id: int):
+    comparacao = comparar_cotacoes(solicitacao_id)
+
+    if comparacao is None:
+        tratar_erro("solicitacao_nao_encontrada", "")
+
+    return comparacao
 
 
 @router.get(

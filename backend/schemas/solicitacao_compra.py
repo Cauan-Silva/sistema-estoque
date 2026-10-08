@@ -65,4 +65,24 @@ class SolicitacaoCompraResposta(BaseModel):
     observacao: str | None
     data_criacao: datetime
     data_atualizacao: datetime
+    cotacao_aprovada_id: int | None = None
+    decisao_por_id: int | None = None
+    decisao_por: str | None = None
+    data_decisao: datetime | None = None
+    justificativa_decisao: str | None = None
     itens: list[ItemSolicitacaoResposta]
+
+
+class AprovacaoEntrada(BaseModel):
+    cotacao_id: int = Field(gt=0)
+    justificativa: str | None = Field(
+        default=None,
+        max_length=500
+    )
+
+
+class ReprovacaoEntrada(BaseModel):
+    justificativa: str = Field(
+        min_length=3,
+        max_length=500
+    )

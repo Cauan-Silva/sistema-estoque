@@ -7,6 +7,10 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
+from backend.repositorio_aprovacao import (
+    aprovar_solicitacao,
+    reprovar_solicitacao,
+)
 from backend.repositorio_solicitacao_compra import (
     atualizar_solicitacao,
     buscar_solicitacao,
@@ -15,6 +19,8 @@ from backend.repositorio_solicitacao_compra import (
     listar_solicitacoes,
 )
 from backend.schemas.solicitacao_compra import (
+    AprovacaoEntrada,
+    ReprovacaoEntrada,
     SolicitacaoCompraAtualizacao,
     SolicitacaoCompraCriacao,
     SolicitacaoCompraResposta,
@@ -47,6 +53,22 @@ ERROS = {
     "status_nao_permite_cancelamento": (
         status.HTTP_409_CONFLICT,
         "Esta solicitação não pode mais ser cancelada."
+    ),
+    "status_nao_permite_decisao": (
+        status.HTTP_409_CONFLICT,
+        "A solicitação não pode ser aprovada ou reprovada no status atual."
+    ),
+    "cotacao_nao_encontrada": (
+        status.HTTP_404_NOT_FOUND,
+        "Cotação não encontrada."
+    ),
+    "cotacao_incompleta": (
+        status.HTTP_400_BAD_REQUEST,
+        "A cotação não cobre todos os itens da solicitação."
+    ),
+    "cotacao_vencida": (
+        status.HTTP_400_BAD_REQUEST,
+        "A cotação está vencida."
     ),
 }
 
@@ -179,6 +201,55 @@ def cancelar(solicitacao_id: int):
         tratar_erro(
             erro,
             "Não foi possível cancelar a solicitação de compra."
+        )
+
+    return solicitacao
+
+
+@router.patch(
+    "/{solicitacao_id}/aprovar",
+    response_model=SolicitacaoCompraResposta
+)
+def aprovar(
+    solicitacao_id: int,
+    dados: AprovacaoEntrada,
+    usuario=Depends(obter_usuario_atual)
+):
+    solicitacao, erro = aprovar_solicitacao(
+        solicitacao_id=solicitacao_id,
+        cotacao_id=dados.cotacao_id,
+        usuario_id=usuario[0],
+        justificativa=dados.justificativa
+    )
+
+    if erro is not None or solicitacao is None:
+        tratar_erro(
+            erro,
+            "Não foi possível aprovar a solicitação de compra."
+        )
+
+    return solicitacao
+
+
+@router.patch(
+    "/{solicitacao_id}/reprovar",
+    response_model=SolicitacaoCompraResposta
+)
+def reprovar(
+    solicitacao_id: int,
+    dados: ReprovacaoEntrada,
+    usuario=Depends(obter_usuario_atual)
+):
+    solicitacao, erro = reprovar_solicitacao(
+        solicitacao_id=solicitacao_id,
+        usuario_id=usuario[0],
+        justificativa=dados.justificativa.strip()
+    )
+
+    if erro is not None or solicitacao is None:
+        tratar_erro(
+            erro,
+            "Não foi possível reprovar a solicitação de compra."
         )
 
     return solicitacao
