@@ -1,6 +1,11 @@
 from datetime import date, datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
+
+
+SituacaoRecebimento = Literal["PENDENTE", "PARCIAL", "COMPLETO"]
 
 
 class CompraCriacao(BaseModel):
@@ -36,6 +41,8 @@ class ItemCompraResposta(BaseModel):
     quantidade: int
     preco_unitario: float
     subtotal: float
+    quantidade_recebida: int
+    quantidade_pendente: int
 
 
 class CompraResposta(BaseModel):
@@ -54,4 +61,7 @@ class CompraResposta(BaseModel):
     valor_total: float
     observacao: str | None
     data_criacao: datetime
+    situacao_recebimento: SituacaoRecebimento
+    ultimo_recebimento: date | None
+    entregue_no_prazo: bool | None
     itens: list[ItemCompraResposta]

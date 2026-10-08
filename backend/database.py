@@ -323,6 +323,50 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS recebimentos (
+                id SERIAL PRIMARY KEY,
+                compra_id INTEGER NOT NULL
+                    REFERENCES compras(id),
+                recebedor_id INTEGER NOT NULL
+                    REFERENCES usuarios(id),
+                data_recebimento DATE NOT NULL,
+                nota_fiscal VARCHAR(50),
+                observacao VARCHAR(500),
+                data_criacao TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            ALTER TABLE movimentacoes
+            ADD COLUMN IF NOT EXISTS recebimento_id INTEGER
+                REFERENCES recebimentos(id)
+                ON DELETE SET NULL;
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS itens_recebimento (
+                id SERIAL PRIMARY KEY,
+                recebimento_id INTEGER NOT NULL
+                    REFERENCES recebimentos(id)
+                    ON DELETE CASCADE,
+                produto_id INTEGER NOT NULL
+                    REFERENCES produtos(id),
+                quantidade INTEGER NOT NULL
+                    CHECK (quantidade > 0),
+                movimentacao_id INTEGER
+                    REFERENCES movimentacoes(id)
+                    ON DELETE SET NULL
+            );
+            """
+        )
+
         conexao.commit()
 
         cursor.close()

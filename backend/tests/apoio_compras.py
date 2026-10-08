@@ -112,3 +112,21 @@ def solicitacao_aprovada(cliente):
     assert aprovacao.status_code == 200
 
     return solicitacao_id, cotacao
+
+
+def compra_registrada(cliente, data_compra="2026-10-01", previsao=None):
+    solicitacao_id, cotacao = solicitacao_aprovada(cliente)
+
+    corpo = {"data_compra": data_compra}
+
+    if previsao:
+        corpo["previsao_entrega"] = previsao
+
+    resposta = cliente.post(
+        f"/solicitacoes-compra/{solicitacao_id}/compra",
+        json=corpo
+    )
+
+    assert resposta.status_code == 201
+
+    return solicitacao_id, resposta.json()

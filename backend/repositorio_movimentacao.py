@@ -104,7 +104,8 @@ def registrar_movimentacao(
             "produto_nome": produto[0],
             "tipo": tipo,
             "quantidade": quantidade,
-            "data_movimentacao": registro[1]
+            "data_movimentacao": registro[1],
+            "recebimento_id": None
         }
 
         cursor.close()
@@ -146,7 +147,8 @@ def listar_movimentacoes(
                 p.nome,
                 m.tipo,
                 m.quantidade,
-                m.data_movimentacao
+                m.data_movimentacao,
+                m.recebimento_id
             FROM movimentacoes m
             INNER JOIN produtos p
                 ON p.id = m.produto_id
@@ -234,7 +236,8 @@ def listar_movimentacoes(
                     "produto_nome": registro[2],
                     "tipo": registro[3],
                     "quantidade": registro[4],
-                    "data_movimentacao": registro[5]
+                    "data_movimentacao": registro[5],
+                    "recebimento_id": registro[6]
                 }
             )
 
@@ -272,7 +275,8 @@ def buscar_movimentacao_por_id(
                 p.nome,
                 m.tipo,
                 m.quantidade,
-                m.data_movimentacao
+                m.data_movimentacao,
+                m.recebimento_id
             FROM movimentacoes m
             INNER JOIN produtos p
                 ON p.id = m.produto_id
@@ -295,7 +299,8 @@ def buscar_movimentacao_por_id(
             "produto_nome": registro[2],
             "tipo": registro[3],
             "quantidade": registro[4],
-            "data_movimentacao": registro[5]
+            "data_movimentacao": registro[5],
+            "recebimento_id": registro[6]
         }
 
     except psycopg2.Error as erro:

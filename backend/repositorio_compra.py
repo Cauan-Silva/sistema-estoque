@@ -7,7 +7,15 @@ from backend.database import conectar
 from backend.repositorio_cotacao import buscar_cotacao
 
 
-CONSULTA_COMPRA = """
+SITUACAO_RECEBIMENTO = """
+    CASE
+        WHEN tr.recebido = 0 THEN 'PENDENTE'
+        WHEN tr.recebido < tc.comprado THEN 'PARCIAL'
+        ELSE 'COMPLETO'
+    END
+"""
+
+CONSULTA_COMPRA = f"""
     SELECT
         c.id,
         c.solicitacao_id,
@@ -23,12 +31,28 @@ CONSULTA_COMPRA = """
         c.frete,
         c.valor_total,
         c.observacao,
-        c.data_criacao
+        c.data_criacao,
+        {SITUACAO_RECEBIMENTO} AS situacao_recebimento,
+        tr.ultimo_recebimento
     FROM compras c
     JOIN fornecedores f
         ON f.id = c.fornecedor_id
     JOIN usuarios u
         ON u.id = c.comprador_id
+    LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(ic.quantidade), 0) AS comprado
+        FROM itens_compra ic
+        WHERE ic.compra_id = c.id
+    ) tc ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT
+            COALESCE(SUM(ir.quantidade), 0) AS recebido,
+            MAX(r.data_recebimento) AS ultimo_recebimento
+        FROM recebimentos r
+        JOIN itens_recebimento ir
+            ON ir.recebimento_id = r.id
+        WHERE r.compra_id = c.id
+    ) tr ON TRUE
 """
 
 
@@ -40,7 +64,15 @@ def _buscar_itens(cursor, compra_id: int):
             p.nome,
             i.quantidade,
             i.preco_unitario,
-            i.subtotal
+            i.subtotal,
+            COALESCE((
+                SELECT SUM(ir.quantidade)
+                FROM itens_recebimento ir
+                JOIN recebimentos r
+                    ON r.id = ir.recebimento_id
+                WHERE r.compra_id = i.compra_id
+                  AND ir.produto_id = i.produto_id
+            ), 0)
         FROM itens_compra i
         JOIN produtos p
             ON p.id = i.produto_id
@@ -56,13 +88,23 @@ def _buscar_itens(cursor, compra_id: int):
             "produto": registro[1],
             "quantidade": registro[2],
             "preco_unitario": float(registro[3]),
-            "subtotal": float(registro[4])
+            "subtotal": float(registro[4]),
+            "quantidade_recebida": int(registro[5]),
+            "quantidade_pendente": registro[2] - int(registro[5])
         }
         for registro in cursor.fetchall()
     ]
 
 
 def _montar_compra(cursor, registro):
+    situacao = registro[15]
+    ultimo_recebimento = registro[16]
+
+    entregue_no_prazo = None
+
+    if situacao == "COMPLETO" and ultimo_recebimento is not None:
+        entregue_no_prazo = ultimo_recebimento <= registro[9]
+
     return {
         "id": registro[0],
         "solicitacao_id": registro[1],
@@ -79,6 +121,9 @@ def _montar_compra(cursor, registro):
         "valor_total": float(registro[12]),
         "observacao": registro[13],
         "data_criacao": registro[14],
+        "situacao_recebimento": situacao,
+        "ultimo_recebimento": ultimo_recebimento,
+        "entregue_no_prazo": entregue_no_prazo,
         "itens": _buscar_itens(cursor, registro[0])
     }
 
@@ -128,6 +173,9 @@ def buscar_compra_por_solicitacao(solicitacao_id: int):
 
 def listar_compras(
     fornecedor_id: int | None = None,
+    situacao_recebimento: str | None = None,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
     pagina: int = 1,
     tamanho: int = 10
 ):
@@ -139,15 +187,32 @@ def listar_compras(
     try:
         cursor = conexao.cursor()
 
-        consulta = CONSULTA_COMPRA
+        condicoes = []
         parametros = []
 
         if fornecedor_id is not None:
-            consulta += " WHERE c.fornecedor_id = %s"
+            condicoes.append("c.fornecedor_id = %s")
             parametros.append(fornecedor_id)
 
+        if situacao_recebimento is not None:
+            condicoes.append(f"({SITUACAO_RECEBIMENTO}) = %s")
+            parametros.append(situacao_recebimento)
+
+        if data_inicio is not None:
+            condicoes.append("c.data_compra >= %s")
+            parametros.append(data_inicio)
+
+        if data_fim is not None:
+            condicoes.append("c.data_compra <= %s")
+            parametros.append(data_fim)
+
+        consulta = CONSULTA_COMPRA
+
+        if condicoes:
+            consulta += " WHERE " + " AND ".join(condicoes)
+
         consulta += """
-            ORDER BY c.id DESC
+            ORDER BY c.data_compra DESC, c.id DESC
             LIMIT %s
             OFFSET %s;
         """

@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,8 +14,13 @@ from backend.repositorio_relatorio import (
     obter_resumo_estoque
 )
 
+from backend.repositorio_relatorio_compras import (
+    gerar_relatorio_compras
+)
+
 from backend.schemas.relatorio import (
     ProdutoValorEstoqueResposta,
+    RelatorioComprasResposta,
     ResumoEstoqueResposta
 )
 
@@ -71,3 +78,36 @@ def obter_produtos_maior_valor(
     return listar_produtos_maior_valor(
         limite=limite
     )
+
+
+@router.get(
+    "/compras",
+    response_model=RelatorioComprasResposta
+)
+def obter_relatorio_compras(
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    fornecedor_id: int | None = Query(
+        default=None,
+        gt=0
+    )
+):
+    if data_inicio and data_fim and data_inicio > data_fim:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A data inicial não pode ser posterior à data final."
+        )
+
+    relatorio = gerar_relatorio_compras(
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        fornecedor_id=fornecedor_id
+    )
+
+    if relatorio is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Não foi possível gerar o relatório de compras."
+        )
+
+    return relatorio
