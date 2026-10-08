@@ -238,6 +238,7 @@ GET  /
 GET  /health
 POST /usuarios
 POST /usuarios/login
+POST /usuarios/token
 ```
 
 Fluxo de uso:
@@ -249,6 +250,8 @@ Fluxo de uso:
 ```text
 Authorization: Bearer <token>
 ```
+
+No Swagger (`/docs`), clique em **Authorize** e informe o e-mail no campo `username` e a senha no campo `password`. O Swagger obtém o token em `POST /usuarios/token` e passa a enviá-lo em todas as requisições.
 
 Requisições sem token ou com token inválido retornam `401`. Usuários inativos recebem `403`.
 
@@ -294,8 +297,11 @@ GET /relatorios/maior-valor
 ```text
 POST /usuarios
 POST /usuarios/login
+POST /usuarios/token
 GET  /usuarios/me
 ```
+
+`POST /usuarios/login` recebe JSON (`email` e `senha`). `POST /usuarios/token` recebe formulário (`username` e `password`) e é o endpoint usado pelo Swagger.
 
 O endpoint `/usuarios/me` exige autenticação.
 

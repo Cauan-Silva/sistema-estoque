@@ -301,3 +301,73 @@ def test_login_email_inexistente(client):
     assert resposta.json() == {
         "detail": "E-mail ou senha inválidos."
     }
+
+def test_token_formulario_com_sucesso(client):
+    cadastro = client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Swagger",
+            "email": "swagger@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    assert cadastro.status_code == 201
+
+    resposta = client.post(
+        "/usuarios/token",
+        data={
+            "username": "Swagger@Teste.com",
+            "password": "senha123"
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    dados = resposta.json()
+
+    assert dados["token_type"] == "bearer"
+
+    rota_protegida = client.get(
+        "/produtos",
+        headers={
+            "Authorization": f"Bearer {dados['access_token']}"
+        }
+    )
+
+    assert rota_protegida.status_code == 200
+
+
+def test_token_formulario_senha_incorreta(client):
+    client.post(
+        "/usuarios",
+        json={
+            "nome": "Usuario Swagger",
+            "email": "swagger@teste.com",
+            "senha": "senha123"
+        }
+    )
+
+    resposta = client.post(
+        "/usuarios/token",
+        data={
+            "username": "swagger@teste.com",
+            "password": "senhaerrada"
+        }
+    )
+
+    assert resposta.status_code == 401
+
+    assert resposta.json() == {
+        "detail": "E-mail ou senha inválidos."
+    }
+
+
+def test_swagger_aponta_para_endpoint_de_token(client):
+    esquema = client.get("/openapi.json").json()
+
+    fluxo = esquema["components"]["securitySchemes"][
+        "OAuth2PasswordBearer"
+    ]["flows"]["password"]
+
+    assert fluxo["tokenUrl"] == "/usuarios/token"

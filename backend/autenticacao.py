@@ -21,7 +21,7 @@ TEMPO_EXPIRACAO_MINUTOS = 30
 
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/usuarios/login"
+    tokenUrl="/usuarios/token"
 )
 
 

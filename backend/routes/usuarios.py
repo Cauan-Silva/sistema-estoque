@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from backend.autenticacao import (
     criar_token_acesso,
@@ -61,9 +62,28 @@ def criar_usuario(usuario: UsuarioCriacao):
     response_model=TokenResposta
 )
 def login(usuario_login: UsuarioLogin):
-    usuario = buscar_usuario_por_email(
-        usuario_login.email
+    return autenticar_usuario(
+        email=usuario_login.email,
+        senha=usuario_login.senha
     )
+
+
+@router.post(
+    "/token",
+    response_model=TokenResposta,
+    summary="Login via formulário (usado pelo Authorize do Swagger)"
+)
+def login_formulario(
+    formulario: OAuth2PasswordRequestForm = Depends()
+):
+    return autenticar_usuario(
+        email=formulario.username.strip().lower(),
+        senha=formulario.password
+    )
+
+
+def autenticar_usuario(email: str, senha: str):
+    usuario = buscar_usuario_por_email(email)
 
     if usuario is None:
         raise HTTPException(
@@ -72,7 +92,7 @@ def login(usuario_login: UsuarioLogin):
         )
 
     senha_valida = verificar_senha(
-        usuario_login.senha,
+        senha,
         usuario[3]
     )
 
