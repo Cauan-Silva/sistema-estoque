@@ -80,6 +80,8 @@ ROTAS_PROTEGIDAS = [
     ("get", "/fornecedores"),
     ("get", "/fornecedores/1"),
     ("post", "/fornecedores"),
+    ("put", "/fornecedores/1"),
+    ("patch", "/fornecedores/1/status"),
 ]
 
 

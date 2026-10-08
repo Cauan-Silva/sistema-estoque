@@ -19,6 +19,10 @@ from backend.repositorio_categoria import (
     buscar_categoria
 )
 
+from backend.repositorio_fornecedor import (
+    buscar_fornecedor
+)
+
 from backend.schemas.produto import (
     ProdutoAtualizar,
     ProdutoCriar,
@@ -35,6 +39,28 @@ router = APIRouter(
 )
 
 
+def validar_fornecedor(
+    fornecedor_id: int | None,
+    permitir_inativo: bool = False
+):
+    if fornecedor_id is None:
+        return
+
+    fornecedor = buscar_fornecedor(fornecedor_id)
+
+    if fornecedor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fornecedor não encontrado."
+        )
+
+    if not fornecedor[7] and not permitir_inativo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Fornecedor inativo."
+        )
+
+
 @router.get(
     "",
     response_model=list[ProdutoResposta]
@@ -45,6 +71,10 @@ def obter_produtos(
         min_length=1
     ),
     categoria_id: int | None = Query(
+        default=None,
+        gt=0
+    ),
+    fornecedor_id: int | None = Query(
         default=None,
         gt=0
     ),
@@ -66,6 +96,7 @@ def obter_produtos(
     return listar_produtos(
         busca=busca,
         categoria_id=categoria_id,
+        fornecedor_id=fornecedor_id,
         estoque_baixo=estoque_baixo,
         limite_estoque=limite_estoque,
         pagina=pagina,
@@ -107,11 +138,14 @@ def criar_produto(dados: ProdutoCriar):
             detail="Categoria não encontrada."
         )
 
+    validar_fornecedor(dados.fornecedor_id)
+
     produto = cadastrar_produto(
         dados.nome.strip(),
         dados.categoria_id,
         dados.quantidade,
-        dados.preco
+        dados.preco,
+        dados.fornecedor_id
     )
 
     if produto is None:
@@ -156,12 +190,21 @@ def editar_produto(
             detail="Categoria não encontrada."
         )
 
+    validar_fornecedor(
+        dados.fornecedor_id,
+        permitir_inativo=(
+            dados.fornecedor_id
+            == produto_existente.fornecedor_id
+        )
+    )
+
     produto = atualizar_produto(
         id_produto,
         dados.nome.strip(),
         dados.categoria_id,
         dados.quantidade,
-        dados.preco
+        dados.preco,
+        dados.fornecedor_id
     )
 
     if produto is None:
