@@ -8,7 +8,8 @@ def cadastrar_produto(
     nome,
     categoria_id,
     quantidade,
-    preco
+    preco,
+    fornecedor_id=None
 ):
     conexao = conectar()
 
@@ -43,9 +44,10 @@ def cadastrar_produto(
                 categoria,
                 categoria_id,
                 quantidade,
-                preco
+                preco,
+                fornecedor_id
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -53,7 +55,8 @@ def cadastrar_produto(
                 nome_categoria,
                 categoria_id,
                 quantidade,
-                preco
+                preco,
+                fornecedor_id
             )
         )
 
@@ -82,6 +85,7 @@ def cadastrar_produto(
 def listar_produtos(
     busca=None,
     categoria_id=None,
+    fornecedor_id=None,
     estoque_baixo=False,
     limite_estoque=5,
     pagina=1,
@@ -102,10 +106,14 @@ def listar_produtos(
                 p.categoria_id,
                 c.nome,
                 p.quantidade,
-                p.preco
+                p.preco,
+                p.fornecedor_id,
+                f.nome
             FROM produtos p
             LEFT JOIN categorias c
                 ON c.id = p.categoria_id
+            LEFT JOIN fornecedores f
+                ON f.id = p.fornecedor_id
         """
 
         condicoes = []
@@ -127,6 +135,15 @@ def listar_produtos(
 
             parametros.append(
                 categoria_id
+            )
+
+        if fornecedor_id is not None:
+            condicoes.append(
+                "p.fornecedor_id = %s"
+            )
+
+            parametros.append(
+                fornecedor_id
             )
 
         if estoque_baixo:
@@ -179,7 +196,9 @@ def listar_produtos(
                     registro[2],
                     registro[3],
                     registro[4],
-                    float(registro[5])
+                    float(registro[5]),
+                    registro[6],
+                    registro[7]
                 )
             )
 
@@ -215,10 +234,14 @@ def buscar_produto_por_id(id_produto):
                 p.categoria_id,
                 c.nome,
                 p.quantidade,
-                p.preco
+                p.preco,
+                p.fornecedor_id,
+                f.nome
             FROM produtos p
             LEFT JOIN categorias c
                 ON c.id = p.categoria_id
+            LEFT JOIN fornecedores f
+                ON f.id = p.fornecedor_id
             WHERE p.id = %s;
             """,
             (id_produto,)
@@ -238,7 +261,9 @@ def buscar_produto_por_id(id_produto):
             registro[2],
             registro[3],
             registro[4],
-            float(registro[5])
+            float(registro[5]),
+            registro[6],
+            registro[7]
         )
 
     except psycopg2.Error as erro:
@@ -256,7 +281,8 @@ def atualizar_produto(
     nome,
     categoria_id,
     quantidade,
-    preco
+    preco,
+    fornecedor_id=None
 ):
     conexao = conectar()
 
@@ -292,7 +318,8 @@ def atualizar_produto(
                 categoria = %s,
                 categoria_id = %s,
                 quantidade = %s,
-                preco = %s
+                preco = %s,
+                fornecedor_id = %s
             WHERE id = %s
             RETURNING id;
             """,
@@ -302,6 +329,7 @@ def atualizar_produto(
                 categoria_id,
                 quantidade,
                 preco,
+                fornecedor_id,
                 id_produto
             )
         )

@@ -443,3 +443,170 @@ def test_validacao_tamanho_pagina_produtos(cliente_autenticado):
     )
 
     assert resposta.status_code == 422
+
+def criar_fornecedor(cliente_autenticado, nome="Fornecedor Produtos"):
+    resposta = cliente_autenticado.post(
+        "/fornecedores",
+        json={
+            "nome": nome
+        }
+    )
+
+    assert resposta.status_code == 201
+
+    return resposta.json()["id"]
+
+
+def test_produto_sem_fornecedor(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+
+    dados = criar_produto(
+        cliente_autenticado,
+        categoria_id
+    ).json()
+
+    assert dados["fornecedor_id"] is None
+    assert dados["fornecedor"] is None
+
+
+def test_criar_produto_com_fornecedor(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    fornecedor_id = criar_fornecedor(cliente_autenticado)
+
+    resposta = cliente_autenticado.post(
+        "/produtos",
+        json={
+            "nome": "Roteador",
+            "categoria_id": categoria_id,
+            "quantidade": 5,
+            "preco": 150,
+            "fornecedor_id": fornecedor_id
+        }
+    )
+
+    assert resposta.status_code == 201
+
+    dados = resposta.json()
+
+    assert dados["fornecedor_id"] == fornecedor_id
+    assert dados["fornecedor"] == "Fornecedor Produtos"
+
+
+def test_criar_produto_com_fornecedor_inexistente(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+
+    resposta = cliente_autenticado.post(
+        "/produtos",
+        json={
+            "nome": "Roteador",
+            "categoria_id": categoria_id,
+            "quantidade": 5,
+            "preco": 150,
+            "fornecedor_id": 9999
+        }
+    )
+
+    assert resposta.status_code == 404
+
+    assert resposta.json() == {
+        "detail": "Fornecedor não encontrado."
+    }
+
+
+def test_criar_produto_com_fornecedor_inativo(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    fornecedor_id = criar_fornecedor(cliente_autenticado)
+
+    cliente_autenticado.patch(
+        f"/fornecedores/{fornecedor_id}/status",
+        json={
+            "ativo": False
+        }
+    )
+
+    resposta = cliente_autenticado.post(
+        "/produtos",
+        json={
+            "nome": "Roteador",
+            "categoria_id": categoria_id,
+            "quantidade": 5,
+            "preco": 150,
+            "fornecedor_id": fornecedor_id
+        }
+    )
+
+    assert resposta.status_code == 400
+
+    assert resposta.json() == {
+        "detail": "Fornecedor inativo."
+    }
+
+
+def test_editar_produto_mantendo_fornecedor_inativo(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    fornecedor_id = criar_fornecedor(cliente_autenticado)
+
+    produto = cliente_autenticado.post(
+        "/produtos",
+        json={
+            "nome": "Roteador",
+            "categoria_id": categoria_id,
+            "quantidade": 5,
+            "preco": 150,
+            "fornecedor_id": fornecedor_id
+        }
+    ).json()
+
+    cliente_autenticado.patch(
+        f"/fornecedores/{fornecedor_id}/status",
+        json={
+            "ativo": False
+        }
+    )
+
+    resposta = cliente_autenticado.put(
+        f"/produtos/{produto['id']}",
+        json={
+            "nome": "Roteador Wi-Fi 6",
+            "categoria_id": categoria_id,
+            "quantidade": 8,
+            "preco": 180,
+            "fornecedor_id": fornecedor_id
+        }
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["nome"] == "Roteador Wi-Fi 6"
+    assert resposta.json()["fornecedor_id"] == fornecedor_id
+
+
+def test_filtrar_produtos_por_fornecedor(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    fornecedor_a = criar_fornecedor(cliente_autenticado, "Fornecedor A")
+    fornecedor_b = criar_fornecedor(cliente_autenticado, "Fornecedor B")
+
+    for nome, fornecedor_id in [
+        ("Produto A", fornecedor_a),
+        ("Produto B", fornecedor_b),
+        ("Produto Sem Fornecedor", None),
+    ]:
+        cliente_autenticado.post(
+            "/produtos",
+            json={
+                "nome": nome,
+                "categoria_id": categoria_id,
+                "quantidade": 1,
+                "preco": 10,
+                "fornecedor_id": fornecedor_id
+            }
+        )
+
+    resposta = cliente_autenticado.get(
+        f"/produtos?fornecedor_id={fornecedor_a}"
+    )
+
+    assert resposta.status_code == 200
+
+    nomes = [produto["nome"] for produto in resposta.json()]
+
+    assert nomes == ["Produto A"]

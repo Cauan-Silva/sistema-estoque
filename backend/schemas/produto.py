@@ -23,6 +23,11 @@ class ProdutoBase(BaseModel):
         ge=0
     )
 
+    fornecedor_id: int | None = Field(
+        default=None,
+        gt=0
+    )
+
 
 class ProdutoCriar(ProdutoBase):
     pass
@@ -35,6 +40,7 @@ class ProdutoAtualizar(ProdutoBase):
 class ProdutoResposta(ProdutoBase):
     id: int
     categoria: str
+    fornecedor: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True

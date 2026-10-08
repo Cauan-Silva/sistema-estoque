@@ -27,6 +27,14 @@ class FornecedorCriacao(BaseModel):
     )
 
 
+class FornecedorAtualizacao(FornecedorCriacao):
+    pass
+
+
+class FornecedorStatus(BaseModel):
+    ativo: bool
+
+
 class FornecedorResposta(BaseModel):
     id: int
     nome: str

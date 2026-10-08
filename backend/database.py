@@ -154,6 +154,32 @@ def criar_tabela():
             """
         )
 
+        cursor.execute(
+            """
+            ALTER TABLE produtos
+            ADD COLUMN IF NOT EXISTS fornecedor_id INTEGER;
+            """
+        )
+
+        cursor.execute(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'fk_produto_fornecedor'
+                ) THEN
+                    ALTER TABLE produtos
+                    ADD CONSTRAINT fk_produto_fornecedor
+                    FOREIGN KEY (fornecedor_id)
+                    REFERENCES fornecedores(id)
+                    ON DELETE SET NULL;
+                END IF;
+            END $$;
+            """
+        )
+
         conexao.commit()
 
         cursor.close()

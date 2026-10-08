@@ -6,7 +6,9 @@ class Produto:
         categoria_id,
         categoria,
         quantidade,
-        preco
+        preco,
+        fornecedor_id=None,
+        fornecedor=None
     ):
         self.id = id
         self.nome = nome
@@ -14,6 +16,8 @@ class Produto:
         self.categoria = categoria
         self.quantidade = quantidade
         self.preco = preco
+        self.fornecedor_id = fornecedor_id
+        self.fornecedor = fornecedor
 
     def __str__(self):
         return (

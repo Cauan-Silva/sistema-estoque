@@ -59,7 +59,11 @@ O projeto também possui autenticação de usuários com JWT, senhas protegidas 
 - Dados de contato, telefone e e-mail
 - CPF/CNPJ do fornecedor
 - Site do fornecedor
+- Atualização de fornecedores
 - Controle de fornecedor ativo/inativo
+- Filtro de fornecedores por status
+- Vínculo opcional entre produto e fornecedor
+- Filtro de produtos por fornecedor
 - API de fornecedores protegida por JWT
 
 ### Qualidade e infraestrutura
@@ -308,9 +312,11 @@ O endpoint `/usuarios/me` exige autenticação.
 ### Fornecedores
 
 ```text
-POST /fornecedores
-GET  /fornecedores
-GET  /fornecedores/{fornecedor_id}
+POST  /fornecedores
+GET   /fornecedores
+GET   /fornecedores/{fornecedor_id}
+PUT   /fornecedores/{fornecedor_id}
+PATCH /fornecedores/{fornecedor_id}/status
 ```
 
 As rotas de fornecedores exigem autenticação com JWT.
@@ -324,9 +330,12 @@ Exemplo de cadastro:
   "nome": "Switch Intelbras 8 Portas",
   "categoria_id": 1,
   "quantidade": 10,
-  "preco": 189.90
+  "preco": 189.90,
+  "fornecedor_id": 1
 }
 ```
+
+O campo `fornecedor_id` é opcional. Um produto não pode ser vinculado a um fornecedor inexistente (`404`) ou inativo (`400`). Ao editar um produto, é possível manter o fornecedor atual mesmo que ele tenha sido inativado.
 
 Busca por nome:
 
@@ -338,6 +347,12 @@ Filtro por categoria:
 
 ```text
 GET /produtos?categoria_id=1
+```
+
+Filtro por fornecedor:
+
+```text
+GET /produtos?fornecedor_id=1
 ```
 
 Estoque baixo:
@@ -508,12 +523,30 @@ Exemplo de fornecedor:
 Rotas disponíveis:
 
 ```text
-POST /fornecedores
-GET  /fornecedores
-GET  /fornecedores/{fornecedor_id}
+POST  /fornecedores
+GET   /fornecedores
+GET   /fornecedores/{fornecedor_id}
+PUT   /fornecedores/{fornecedor_id}
+PATCH /fornecedores/{fornecedor_id}/status
 ```
 
 Todas essas rotas exigem autenticação.
+
+Filtro por status:
+
+```text
+GET /fornecedores?ativo=true
+```
+
+Inativar ou reativar um fornecedor:
+
+```json
+{
+  "ativo": false
+}
+```
+
+Fornecedores não são excluídos, apenas inativados, para preservar o histórico dos produtos vinculados.
 
 ## Testes automatizados
 
@@ -552,13 +585,11 @@ A suíte cobre atualmente:
 - autorização com Bearer Token
 - acesso ao usuário autenticado
 - repositório de fornecedores
+- atualização, status e filtros de fornecedores
+- vínculo entre produtos e fornecedores
 - validações da API
 
-Último resultado validado localmente:
-
-```text
-75 passed
-```
+O resultado de cada execução fica disponível na aba **Actions** do GitHub.
 
 ## Integração contínua
 
@@ -600,7 +631,10 @@ O workflow está localizado em:
 - Login inválido não informa se o erro ocorreu no e-mail ou na senha.
 - Tokens JWT possuem tempo de expiração.
 - Usuários inativos não podem acessar rotas autenticadas.
-- Rotas de fornecedores exigem autenticação.
+- Todas as rotas de negócio exigem autenticação.
+- Fornecedores são inativados em vez de excluídos.
+- Produtos podem ter um fornecedor opcional.
+- Novos vínculos só podem ser feitos com fornecedores ativos.
 
 ## Próximas funcionalidades
 
@@ -608,7 +642,7 @@ O projeto está evoluindo do gerenciamento de estoque para um fluxo integrado de
 
 Próximas etapas:
 
-1. CRUD completo de fornecedores
+1. ~~CRUD completo de fornecedores~~ (concluído)
 2. Solicitações de compra
 3. Registro de cotações por fornecedor
 4. Comparação de preços, frete e prazo
