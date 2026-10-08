@@ -1,5 +1,5 @@
-def criar_categoria(client, nome="Switches"):
-    resposta = client.post(
+def criar_categoria(cliente_autenticado, nome="Switches"):
+    resposta = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": nome
@@ -12,13 +12,13 @@ def criar_categoria(client, nome="Switches"):
 
 
 def criar_produto(
-    client,
+    cliente_autenticado,
     categoria_id,
     nome="Switch Intelbras",
     quantidade=10,
     preco=100.0
 ):
-    resposta = client.post(
+    resposta = cliente_autenticado.post(
         "/produtos",
         json={
             "nome": nome,
@@ -33,11 +33,11 @@ def criar_produto(
     return resposta.json()["id"]
 
 
-def test_relatorio_resumo(client):
-    categoria_id = criar_categoria(client)
+def test_relatorio_resumo(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     produto_1 = criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto A",
         quantidade=10,
@@ -45,14 +45,14 @@ def test_relatorio_resumo(client):
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto B",
         quantidade=3,
         preco=50
     )
 
-    client.post(
+    cliente_autenticado.post(
         "/movimentacoes",
         json={
             "produto_id": produto_1,
@@ -61,7 +61,7 @@ def test_relatorio_resumo(client):
         }
     )
 
-    client.post(
+    cliente_autenticado.post(
         "/movimentacoes",
         json={
             "produto_id": produto_1,
@@ -70,7 +70,7 @@ def test_relatorio_resumo(client):
         }
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/relatorios/resumo",
         params={
             "limite_estoque": 5
@@ -90,11 +90,11 @@ def test_relatorio_resumo(client):
     assert dados["total_saidas"] == 2
 
 
-def test_relatorio_maior_valor(client):
-    categoria_id = criar_categoria(client)
+def test_relatorio_maior_valor(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto Barato",
         quantidade=2,
@@ -102,14 +102,14 @@ def test_relatorio_maior_valor(client):
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto Caro",
         quantidade=10,
         preco=100
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/relatorios/maior-valor"
     )
 
@@ -126,11 +126,11 @@ def test_relatorio_maior_valor(client):
     assert dados[1]["valor_estoque"] == 20
 
 
-def test_relatorio_maior_valor_com_limite(client):
-    categoria_id = criar_categoria(client)
+def test_relatorio_maior_valor_com_limite(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto 1",
         quantidade=10,
@@ -138,7 +138,7 @@ def test_relatorio_maior_valor_com_limite(client):
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto 2",
         quantidade=5,
@@ -146,14 +146,14 @@ def test_relatorio_maior_valor_com_limite(client):
     )
 
     criar_produto(
-        client,
+        cliente_autenticado,
         categoria_id,
         nome="Produto 3",
         quantidade=1,
         preco=100
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/relatorios/maior-valor",
         params={
             "limite": 2
@@ -170,8 +170,8 @@ def test_relatorio_maior_valor_com_limite(client):
     assert dados[1]["nome"] == "Produto 2"
 
 
-def test_relatorio_resumo_banco_vazio(client):
-    resposta = client.get(
+def test_relatorio_resumo_banco_vazio(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/relatorios/resumo"
     )
 
@@ -190,8 +190,8 @@ def test_relatorio_resumo_banco_vazio(client):
     }
 
 
-def test_validacao_limite_relatorio(client):
-    resposta = client.get(
+def test_validacao_limite_relatorio(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/relatorios/maior-valor",
         params={
             "limite": 0

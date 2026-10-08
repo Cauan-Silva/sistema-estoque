@@ -1,10 +1,12 @@
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
     status
 )
 
+from backend.autenticacao import obter_usuario_atual
 from backend.repositorio_relatorio import (
     listar_produtos_maior_valor,
     obter_resumo_estoque
@@ -18,7 +20,10 @@ from backend.schemas.relatorio import (
 
 router = APIRouter(
     prefix="/relatorios",
-    tags=["Relatórios"]
+    tags=["Relatórios"],
+    dependencies=[
+        Depends(obter_usuario_atual)
+    ]
 )
 
 

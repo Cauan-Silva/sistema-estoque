@@ -3,11 +3,13 @@ from typing import Literal
 
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
     status
 )
 
+from backend.autenticacao import obter_usuario_atual
 from backend.repositorio_movimentacao import (
     buscar_movimentacao_por_id,
     listar_movimentacoes,
@@ -22,7 +24,10 @@ from backend.schemas.movimentacao import (
 
 router = APIRouter(
     prefix="/movimentacoes",
-    tags=["Movimentações"]
+    tags=["Movimentações"],
+    dependencies=[
+        Depends(obter_usuario_atual)
+    ]
 )
 
 

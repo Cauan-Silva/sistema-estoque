@@ -81,29 +81,6 @@ def test_buscar_usuario_por_email():
         senha_hash.encode("utf-8")
     )
 
-def test_buscar_usuario_por_email():
-    cadastrar_usuario(
-        nome="Usuario Busca",
-        email="busca@teste.com",
-        senha="senha123"
-    )
-
-    usuario = buscar_usuario_por_email(
-        "busca@teste.com"
-    )
-
-    assert usuario is not None
-    assert usuario[1] == "Usuario Busca"
-    assert usuario[2] == "busca@teste.com"
-
-    senha_hash = usuario[3]
-
-    assert bcrypt.checkpw(
-        "senha123".encode("utf-8"),
-        senha_hash.encode("utf-8")
-    )
-
-
 def test_buscar_usuario_por_id():
     usuario_cadastrado, erro = cadastrar_usuario(
         nome="Usuario Busca ID",

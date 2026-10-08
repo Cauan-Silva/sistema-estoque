@@ -1,5 +1,5 @@
-def test_criar_categoria(client):
-    resposta = client.post(
+def test_criar_categoria(cliente_autenticado):
+    resposta = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Switches"
@@ -14,22 +14,22 @@ def test_criar_categoria(client):
     assert dados["nome"] == "Switches"
 
 
-def test_listar_categorias(client):
-    client.post(
+def test_listar_categorias(cliente_autenticado):
+    cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Switches"
         }
     )
 
-    client.post(
+    cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Roteadores"
         }
     )
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         "/categorias"
     )
 
@@ -48,8 +48,8 @@ def test_listar_categorias(client):
     assert "Roteadores" in nomes
 
 
-def test_buscar_categoria_por_id(client):
-    criacao = client.post(
+def test_buscar_categoria_por_id(cliente_autenticado):
+    criacao = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "ONU"
@@ -58,7 +58,7 @@ def test_buscar_categoria_por_id(client):
 
     categoria_id = criacao.json()["id"]
 
-    resposta = client.get(
+    resposta = cliente_autenticado.get(
         f"/categorias/{categoria_id}"
     )
 
@@ -70,8 +70,8 @@ def test_buscar_categoria_por_id(client):
     assert dados["nome"] == "ONU"
 
 
-def test_buscar_categoria_inexistente(client):
-    resposta = client.get(
+def test_buscar_categoria_inexistente(cliente_autenticado):
+    resposta = cliente_autenticado.get(
         "/categorias/9999"
     )
 
@@ -82,8 +82,8 @@ def test_buscar_categoria_inexistente(client):
     }
 
 
-def test_atualizar_categoria(client):
-    criacao = client.post(
+def test_atualizar_categoria(cliente_autenticado):
+    criacao = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Switch"
@@ -92,7 +92,7 @@ def test_atualizar_categoria(client):
 
     categoria_id = criacao.json()["id"]
 
-    resposta = client.put(
+    resposta = cliente_autenticado.put(
         f"/categorias/{categoria_id}",
         json={
             "nome": "Switches de Rede"
@@ -110,8 +110,8 @@ def test_atualizar_categoria(client):
     )
 
 
-def test_excluir_categoria(client):
-    criacao = client.post(
+def test_excluir_categoria(cliente_autenticado):
+    criacao = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Temporaria"
@@ -120,28 +120,28 @@ def test_excluir_categoria(client):
 
     categoria_id = criacao.json()["id"]
 
-    resposta = client.delete(
+    resposta = cliente_autenticado.delete(
         f"/categorias/{categoria_id}"
     )
 
     assert resposta.status_code == 204
 
-    consulta = client.get(
+    consulta = cliente_autenticado.get(
         f"/categorias/{categoria_id}"
     )
 
     assert consulta.status_code == 404
 
 
-def test_categoria_duplicada(client):
-    client.post(
+def test_categoria_duplicada(cliente_autenticado):
+    cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Switches"
         }
     )
 
-    resposta = client.post(
+    resposta = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "Switches"
@@ -155,8 +155,8 @@ def test_categoria_duplicada(client):
     }
 
 
-def test_validacao_nome_categoria(client):
-    resposta = client.post(
+def test_validacao_nome_categoria(cliente_autenticado):
+    resposta = cliente_autenticado.post(
         "/categorias",
         json={
             "nome": "A"

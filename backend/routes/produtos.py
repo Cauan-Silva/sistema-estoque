@@ -1,10 +1,12 @@
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     Query,
     status
 )
 
+from backend.autenticacao import obter_usuario_atual
 from backend.repositorio import (
     atualizar_produto,
     buscar_produto_por_id,
@@ -26,7 +28,10 @@ from backend.schemas.produto import (
 
 router = APIRouter(
     prefix="/produtos",
-    tags=["Produtos"]
+    tags=["Produtos"],
+    dependencies=[
+        Depends(obter_usuario_atual)
+    ]
 )
 
 

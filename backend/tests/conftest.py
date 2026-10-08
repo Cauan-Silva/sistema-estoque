@@ -52,3 +52,30 @@ def limpar_banco():
 def client():
     with TestClient(app) as cliente:
         yield cliente
+
+@pytest.fixture()
+def cliente_autenticado():
+    from backend.autenticacao import criar_token_acesso
+    from backend.repositorio_usuario import cadastrar_usuario
+
+    usuario, erro = cadastrar_usuario(
+        nome="Usuario Testes",
+        email="usuario.testes@teste.com",
+        senha="senha123"
+    )
+
+    assert erro is None
+    assert usuario is not None
+
+    token = criar_token_acesso(
+        usuario_id=usuario[0],
+        email=usuario[2]
+    )
+
+    with TestClient(
+        app,
+        headers={
+            "Authorization": f"Bearer {token}"
+        }
+    ) as cliente:
+        yield cliente
