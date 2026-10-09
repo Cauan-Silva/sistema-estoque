@@ -650,3 +650,34 @@ def test_estoque_minimo_por_produto(cliente_autenticado):
     ).json()
 
     assert resumo["produtos_estoque_baixo"] == 1
+
+
+def test_busca_ignora_acentos_e_ordem_das_palavras(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    for nome in ["SPLITTER APC 1:8 FIBRA (VERDE)", "CAIXA ÓPTICA DE EMENDA", "Cabo óptico drop 1FO", "Botina 41"]:
+        criar_produto(cliente_autenticado, categoria_id, nome=nome)
+
+    def buscar(termo):
+        resposta = cliente_autenticado.get("/produtos", params={"busca": termo})
+        assert resposta.status_code == 200
+        return sorted(p["nome"] for p in resposta.json())
+
+    assert buscar("optico") == ["Cabo óptico drop 1FO"]
+    assert buscar("ÓPTICO") == buscar("optico")
+    assert buscar("optica") == ["CAIXA ÓPTICA DE EMENDA"]
+    assert buscar("splitter 1:8") == ["SPLITTER APC 1:8 FIBRA (VERDE)"]
+    assert buscar("drop cabo") == ["Cabo óptico drop 1FO"]
+    assert buscar("100%") == []
+
+
+def test_estoque_minimo_zero_nao_conta_como_estoque_baixo(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+    resposta = cliente_autenticado.post("/produtos", json={
+        "nome": "Notebook avulso", "categoria_id": categoria_id,
+        "quantidade": 0, "preco": 3000, "estoque_minimo": 0,
+    })
+    assert resposta.status_code == 201
+
+    assert cliente_autenticado.get("/produtos", params={"estoque_baixo": True}).json() == []
+    assert cliente_autenticado.get("/relatorios/resumo").json()["produtos_estoque_baixo"] == 0
+    assert cliente_autenticado.get("/sugestoes-compra").json() == []

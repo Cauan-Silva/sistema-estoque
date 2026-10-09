@@ -142,7 +142,8 @@ def _estoque_baixo(cursor):
         """
         SELECT COUNT(*)
         FROM produtos p
-        WHERE p.quantidade <= p.estoque_minimo
+        WHERE p.estoque_minimo > 0
+          AND p.quantidade <= p.estoque_minimo
           AND NOT EXISTS (
               SELECT 1
               FROM itens_solicitacao_compra i

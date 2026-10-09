@@ -88,3 +88,15 @@ def test_pedido_aberto_e_compra_a_receber_contam(cliente_autenticado):
 
 def test_parametros_validados(cliente_autenticado):
     assert cliente_autenticado.get("/sugestoes-compra?dias_consumo=1").status_code == 422
+
+
+def test_estoque_minimo_zero_so_entra_com_consumo(cliente_autenticado):
+    avulso = produto(cliente_autenticado, "Avulso", 0, 0)
+    com_giro = produto(cliente_autenticado, "Com giro", 30, 0)
+    saida(cliente_autenticado, com_giro, 29, dias_atras=5)  # sobra 1, consumo ~0,32/dia × 7 dias de prazo = 2,3
+
+    dados = por_nome(cliente_autenticado.get("/sugestoes-compra").json())
+
+    assert "Avulso" not in dados
+    assert dados["Com giro"]["sugerido"] > 0
+    assert por_nome(cliente_autenticado.get("/sugestoes-compra?todos=true").json())["Avulso"]["motivo"] is None

@@ -236,3 +236,36 @@ def test_filtrar_compras_por_situacao_e_periodo(cliente_autenticado):
     invertido = cliente.get("/compras?data_inicio=2026-10-01&data_fim=2026-09-01")
 
     assert invertido.status_code == 400
+
+
+def test_entrada_no_estoque_fica_na_data_do_recebimento(cliente_autenticado):
+    from datetime import date
+
+    cliente = cliente_autenticado
+    solicitacao_id, _ = compra_registrada(cliente, data_compra="2026-01-10")
+
+    assert receber(cliente, solicitacao_id, data_recebimento="2026-01-15").status_code == 201
+
+    movimentacoes = cliente.get("/movimentacoes").json()
+    assert movimentacoes
+    assert all(m["data_movimentacao"].startswith("2026-01-15") for m in movimentacoes)
+
+    _, compra_hoje = compra_registrada_hoje(cliente)
+    assert compra_hoje is not None
+    hoje = [m for m in cliente.get("/movimentacoes").json() if m["recebimento_id"] and not m["data_movimentacao"].startswith("2026-01-15")]
+    assert all(m["data_movimentacao"].startswith(date.today().isoformat()) for m in hoje)
+
+
+def compra_registrada_hoje(cliente):
+    from datetime import date
+
+    from backend.tests.apoio_compras import criar_fornecedor, registrar_cotacao, novo_cliente
+
+    produto = cliente.post("/categorias", json={"nome": "Categoria Hoje"}).json()["id"]
+    produto_id = cliente.post("/produtos", json={"nome": "Produto Hoje", "categoria_id": produto, "quantidade": 0, "preco": 1}).json()["id"]
+    solicitacao_id = cliente.post("/solicitacoes-compra", json={"itens": [{"produto_id": produto_id, "quantidade": 2}]}).json()["id"]
+    cotacao = registrar_cotacao(cliente, solicitacao_id, criar_fornecedor(cliente, "Fornecedor Hoje"), {produto_id: 1})
+    novo_cliente("APROVADOR").patch(f"/solicitacoes-compra/{solicitacao_id}/aprovar", json={"cotacao_id": cotacao["id"]})
+    compra = cliente.post(f"/solicitacoes-compra/{solicitacao_id}/compra", json={"data_compra": date.today().isoformat()}).json()
+    assert receber(cliente, solicitacao_id).status_code == 201
+    return solicitacao_id, compra

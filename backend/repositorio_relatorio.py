@@ -50,7 +50,8 @@ def obter_resumo_estoque(limite_estoque=None):
                 """
                 SELECT COUNT(*)
                 FROM produtos
-                WHERE quantidade <= estoque_minimo;
+                WHERE estoque_minimo > 0
+                  AND quantidade <= estoque_minimo;
                 """
             )
         else:

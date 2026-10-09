@@ -1,6 +1,7 @@
 import logging
 import psycopg2
 
+from backend.busca import condicao_busca
 from backend.database import conectar
 from backend.produto import Produto
 
@@ -126,14 +127,11 @@ def listar_produtos(
         condicoes = []
         parametros = []
 
-        if busca:
-            condicoes.append(
-                "p.nome ILIKE %s"
-            )
+        sql_busca, parametros_busca = condicao_busca("p.nome", busca)
 
-            parametros.append(
-                f"%{busca}%"
-            )
+        if sql_busca:
+            condicoes.append(sql_busca)
+            parametros.extend(parametros_busca)
 
         if categoria_id is not None:
             condicoes.append(
@@ -155,7 +153,7 @@ def listar_produtos(
 
         if estoque_baixo and limite_estoque is None:
             condicoes.append(
-                "p.quantidade <= p.estoque_minimo"
+                "p.estoque_minimo > 0 AND p.quantidade <= p.estoque_minimo"
             )
 
         elif estoque_baixo:

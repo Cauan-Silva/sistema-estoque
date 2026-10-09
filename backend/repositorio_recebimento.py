@@ -316,16 +316,26 @@ def registrar_recebimento(
                     tipo,
                     quantidade,
                     recebimento_id,
-                    usuario_id
+                    usuario_id,
+                    data_movimentacao
                 )
-                VALUES (%s, 'ENTRADA', %s, %s, %s)
+                VALUES (
+                    %s, 'ENTRADA', %s, %s, %s,
+                    -- Recebimento lançado depois: a entrada fica na data em que chegou
+                    CASE
+                        WHEN %s::date >= CURRENT_DATE THEN CURRENT_TIMESTAMP
+                        ELSE %s::date + LOCALTIME
+                    END
+                )
                 RETURNING id;
                 """,
                 (
                     item["produto_id"],
                     item["quantidade"],
                     recebimento_id,
-                    recebedor_id
+                    recebedor_id,
+                    data_recebimento,
+                    data_recebimento
                 )
             )
 
