@@ -35,6 +35,7 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Fornecedores (ativos e inativos) e formas de pagamento (à vista, dia específico, a prazo de 1X a 12X)
 - Solicitações de compra com vários itens
 - Cotações por fornecedor, com preços por item, frete, prazo, validade e forma de pagamento
+- Planilha de orçamento: modelo padrão em Excel com os itens da solicitação, importação da planilha preenchida como cotação e exportação das cotações em Excel ou PDF
 - Comparação de cotações: menor total, menor prazo, menor frete e melhor preço de cada produto
 - Aprovação e reprovação com justificativa; só o Administrador pode decidir sobre a própria solicitação
 - Registro da compra com cópia dos valores aprovados
@@ -293,6 +294,7 @@ As demais rotas exigem o cabeçalho `Authorization: Bearer <token>`.
 | Formas de pagamento | `GET/POST /formas-pagamento`, `GET/PUT /formas-pagamento/{id}`, `PATCH /formas-pagamento/{id}/status` |
 | Solicitações | `GET/POST /solicitacoes-compra`, `GET/PUT /solicitacoes-compra/{id}`, `PATCH .../cancelar`, `.../aprovar`, `.../reprovar` |
 | Cotações | `GET/POST /solicitacoes-compra/{id}/cotacoes`, `GET/PUT/DELETE .../cotacoes/{cotacao_id}`, `GET .../cotacoes/comparacao` |
+| Planilha de orçamento | `GET .../cotacoes/modelo`, `POST .../cotacoes/importar` (arquivo .xlsx; `substituir=true` atualiza a cotação do mesmo fornecedor), `GET .../cotacoes/exportar?formato=xlsx\|pdf`, `GET .../cotacoes/{cotacao_id}/planilha` |
 | Compras | `POST/GET /solicitacoes-compra/{id}/compra`, `GET /compras`, `GET /compras/{id}` |
 | Recebimentos | `POST/GET /solicitacoes-compra/{id}/compra/recebimentos` |
 | Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}` |
