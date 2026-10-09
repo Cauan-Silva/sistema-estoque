@@ -31,6 +31,7 @@ def limpar_banco():
     cursor.execute(
         """
         TRUNCATE TABLE
+            credenciais_externas,
             auditoria,
             itens_recebimento,
             recebimentos,
