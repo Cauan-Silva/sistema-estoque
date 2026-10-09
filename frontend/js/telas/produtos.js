@@ -63,7 +63,7 @@ export async function telaProdutos(area) {
         },
         {
           nome: "estoque_minimo",
-          rotulo: "Estoque mínimo (0 = compra avulsa)",
+          rotulo: "Estoque mínimo (0 = compra avulsa, sem reposição)",
           tipo: "number",
           min: 0,
           passo: 1,

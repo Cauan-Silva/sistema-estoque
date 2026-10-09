@@ -7,7 +7,7 @@ Para cada produto:
 - prazo = média do prazo de entrega das cotações aprovadas do produto
   (ou `prazo_padrao`, se ele nunca foi comprado pelo sistema);
 - ponto de pedido = estoque mínimo + consumo diário × prazo;
-- produtos com estoque mínimo 0 e sem consumo são compras avulsas e não entram;
+- produtos com estoque mínimo 0 são compras avulsas e não entram;
 - quando estoque + em pedido ≤ ponto de pedido, sugere comprar o suficiente
   para voltar ao mínimo e cobrir `cobertura_dias` de consumo depois da entrega
   (no mínimo um lote do tamanho do estoque mínimo).
@@ -99,8 +99,8 @@ def calcular(registro, dias_consumo: int, cobertura_dias: int, prazo_padrao: int
     ponto_pedido = minimo + consumo_diario * prazo
     alvo = minimo + consumo_diario * (prazo + cobertura_dias)
 
-    # Estoque mínimo 0 = produto sem reposição automática (compra avulsa), a menos que tenha consumo.
-    sem_reposicao = minimo == 0 and consumo_diario == 0
+    # Estoque mínimo 0 = compra avulsa: o produto não tem reposição automática.
+    sem_reposicao = minimo == 0
     precisa = not sem_reposicao and disponivel <= ponto_pedido
     # Compra pelo menos um lote do tamanho do estoque mínimo, para não sugerir 1 unidade de cada vez.
     sugerido = max(math.ceil(alvo - disponivel), minimo, 1) if precisa else 0

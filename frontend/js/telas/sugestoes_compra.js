@@ -238,6 +238,7 @@ export async function telaSugestoesCompra(area) {
         h("li", {}, "Consumo médio: saídas do período escolhido divididas pelo número de dias."),
         h("li", {}, "Prazo de entrega: média das cotações aprovadas do produto; sem histórico, usa 7 dias (estimado)."),
         h("li", {}, "Em pedido: solicitações abertas, em cotação ou aprovadas, mais o que foi comprado e ainda não chegou."),
+        h("li", {}, "Produtos com estoque mínimo 0 são compras avulsas e não aparecem aqui."),
         h("li", {}, "Repor quando: estoque + em pedido ≤ mínimo + consumo durante o prazo de entrega."),
         h("li", {}, "Quanto comprar: o suficiente para ter o mínimo mais o consumo do prazo e da cobertura escolhida, e pelo menos um lote do tamanho do mínimo.")
       )
