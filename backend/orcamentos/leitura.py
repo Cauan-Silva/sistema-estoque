@@ -1,8 +1,10 @@
 """Extrai fornecedor, condições e itens de um orçamento recebido.
 
 - XML de NF-e: lido aqui mesmo, sem custo.
-- PDF e imagens (prints, fotos): enviados à API da Anthropic, que devolve
-  os dados num formato fixo. Precisa de ANTHROPIC_API_KEY no .env.
+- PDF e imagens (prints, fotos): lidos por IA, de uma destas formas:
+  - Ollama, rodando no próprio servidor (OLLAMA_URL): gratuito e nada sai da empresa;
+  - API da Anthropic (ANTHROPIC_API_KEY): pago por uso, mais preciso.
+  LEITURA_ORCAMENTOS=ollama|anthropic escolhe quando os dois estão configurados.
 
 O resultado é sempre o mesmo dicionário (ver `orcamento_vazio`), para a
 tela de revisão tratar todos os formatos igual.
@@ -53,8 +55,25 @@ def orcamento_vazio():
     }
 
 
+def provedor_ia() -> str | None:
+    """Qual IA lê PDF e imagens: "ollama", "anthropic" ou None (nenhuma configurada)."""
+    escolhido = os.getenv("LEITURA_ORCAMENTOS", "").strip().lower()
+    tem_anthropic = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    tem_ollama = bool(os.getenv("OLLAMA_URL", "").strip())
+
+    if escolhido == "ollama" and tem_ollama:
+        return "ollama"
+    if escolhido == "anthropic" and tem_anthropic:
+        return "anthropic"
+    if tem_ollama:
+        return "ollama"
+    if tem_anthropic:
+        return "anthropic"
+    return None
+
+
 def leitura_por_ia_configurada() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    return provedor_ia() is not None
 
 
 def tipo_do_arquivo(nome: str, tipo_informado: str | None, conteudo: bytes) -> str:
@@ -94,7 +113,7 @@ def extrair(conteudo: bytes, nome: str, tipo_informado: str | None = None):
     if tipo not in TIPOS_ACEITOS:
         raise ErroLeitura("Formato não suportado. Envie PDF, imagem (PNG, JPG, WEBP) ou XML de NF-e.")
 
-    return ler_com_ia(conteudo, tipo), "ia"
+    return ler_com_ia(conteudo, tipo), provedor_ia()
 
 
 # ---------- XML de NF-e ----------
@@ -234,6 +253,13 @@ Regras:
 - Frete CIF (por conta do remetente/fornecedor) é 0."""
 
 
+INSTRUCOES_OLLAMA = INSTRUCOES.replace(
+    "Extraia os dados e chame a ferramenta registrar_orcamento.",
+    "Extraia os dados e responda somente com um objeto JSON no formato pedido, sem texto antes ou depois. "
+    "Use null quando um campo não aparecer.",
+)
+
+
 def _modelo() -> str:
     return os.getenv("ANTHROPIC_MODEL", "").strip() or MODELO_PADRAO
 
@@ -271,12 +297,19 @@ def chamar_api(corpo: dict) -> dict:
 
 
 def ler_com_ia(conteudo: bytes, tipo: str):
-    if not leitura_por_ia_configurada():
+    provedor = provedor_ia()
+
+    if provedor is None:
         raise ErroLeitura(
-            "A leitura de PDF e imagens usa a API da Anthropic e não está configurada. "
-            "Defina ANTHROPIC_API_KEY no .env e reinicie a API. XML de NF-e funciona sem ela.",
+            "A leitura de PDF e imagens não está configurada. Defina OLLAMA_URL (IA local, gratuita) "
+            "ou ANTHROPIC_API_KEY no .env e reinicie a API. XML de NF-e funciona sem elas.",
             503,
         )
+
+    if provedor == "ollama":
+        from backend.orcamentos import ollama
+
+        return normalizar(ollama.ler(conteudo, tipo, INSTRUCOES_OLLAMA, ESQUEMA))
 
     dados_base64 = base64.standard_b64encode(conteudo).decode()
     anexo = (

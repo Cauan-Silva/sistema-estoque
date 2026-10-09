@@ -82,7 +82,7 @@ export async function telaImportarOrcamentos(area) {
       { class: "suave" },
       configuracao.leitura_por_ia
         ? "PDF, print ou foto (PNG, JPG) e XML de NF-e. Pode enviar vários de uma vez."
-        : "Somente XML de NF-e. Para ler PDF e imagens, configure a chave da Anthropic no servidor."
+        : "Somente XML de NF-e. Para ler PDF e imagens, configure uma IA no servidor (veja o aviso acima)."
     )
   );
 
@@ -262,14 +262,14 @@ export async function telaImportarOrcamentos(area) {
         { class: "titulo-orcamento" },
         h("h2", {}, orcamento.arquivo),
         orcamento.origem
-          ? h("span", { class: "selo-origem" }, orcamento.origem === "xml" ? "XML da NF-e" : "Lido por IA")
+          ? h("span", { class: "selo-origem" }, { xml: "XML da NF-e", ollama: "Lido por IA local", anthropic: "Lido por IA" }[orcamento.origem] || "Lido")
           : null
       ),
       h("button", { type: "button", class: "pequeno perigo", onClick: () => remover(orcamento) }, "Remover")
     );
 
     if (orcamento.estado === "lendo") {
-      return h("section", { class: "bloco orcamento lendo" }, topo, h("p", { class: "lendo-texto" }, "Lendo o orçamento…"));
+      return h("section", { class: "bloco orcamento lendo" }, topo, h("p", { class: "lendo-texto" }, configuracao.provedor === "ollama" ? "Lendo o orçamento com a IA local… pode levar alguns minutos." : "Lendo o orçamento…"));
     }
 
     if (orcamento.estado === "erro") {
@@ -561,7 +561,7 @@ export async function telaImportarOrcamentos(area) {
       : h(
           "p",
           { class: "aviso-configuracao" },
-          "A leitura de PDF e imagens está desligada. Para ligar, defina ANTHROPIC_API_KEY no arquivo .env do servidor e reinicie a API."
+          "A leitura de PDF e imagens está desligada. Para ligar de graça, instale o Ollama no servidor e defina OLLAMA_URL no .env; ou use ANTHROPIC_API_KEY (pago por uso). Depois reinicie a API."
         ),
     zona,
     lista,

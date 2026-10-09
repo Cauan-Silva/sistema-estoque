@@ -165,8 +165,9 @@ Nos outros computadores, abra `http://IP-DO-SERVIDOR:8000/app/`. Com Docker, a p
 | `LOG_DIR` | Não | Pasta dos arquivos de log (padrão: `logs`) |
 | `API_PORT` | Não | Porta da API no Docker (padrão: 8000) |
 | `MERCADO_LIVRE_CLIENT_ID`, `MERCADO_LIVRE_CLIENT_SECRET`, `MERCADO_LIVRE_REDIRECT_URI` | Não | Consulta de preços no Mercado Livre |
-| `ANTHROPIC_API_KEY` | Não | Leitura de orçamentos em PDF e imagem. Sem ela, só XML de NF-e é lido. Os arquivos são enviados à API da Anthropic |
-| `ANTHROPIC_MODEL` | Não | Modelo usado na leitura (padrão `claude-sonnet-5-5`) |
+| `OLLAMA_URL`, `OLLAMA_MODEL` | Não | Leitura de orçamentos em PDF e imagem com IA local e gratuita (Ollama). Modelo padrão `qwen2.5vl:7b` |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Não | Leitura de orçamentos pela API da Anthropic, paga por uso (modelo padrão `claude-sonnet-5-5`). Os arquivos são enviados à Anthropic |
+| `LEITURA_ORCAMENTOS` | Não | `ollama` ou `anthropic`, quando as duas estão configuradas (padrão: `ollama`). Sem nenhuma, só XML de NF-e é lido |
 
 O `.env` contém senhas e não vai para o GitHub. O modelo com todas as variáveis está em `.env.example`.
 
@@ -253,6 +254,16 @@ O token do Mercado Livre expira em poucas horas. O sistema renova sozinho e guar
 
 As fontes ficam em `backend/precos/`. Crie uma classe que herde de `FontePreco`, com `nome`, `configurada()` e `buscar(termo, limite)` devolvendo um `ResultadoFonte`, e acrescente uma instância à lista `FONTES` em `backend/precos/servico.py`. A tela de preços passa a mostrá-la automaticamente.
 
+
+## Leitura de orçamentos com IA local (Ollama)
+
+A tela **Solicitações > Importar orçamentos** lê PDFs e prints com IA. Para fazer isso de graça e sem enviar os arquivos para fora da empresa:
+
+1. Instale o [Ollama](https://ollama.com) no PC que roda a API (Windows, macOS ou Linux).
+2. Baixe um modelo que entende imagens: `ollama pull qwen2.5vl:7b` (cerca de 6 GB; precisa de 16 GB de RAM, e uma placa de vídeo deixa bem mais rápido). Em máquinas mais fracas, `qwen2.5vl:3b` é menor e menos preciso.
+3. No `.env`, preencha `OLLAMA_URL=http://localhost:11434` (ou `http://host.docker.internal:11434` se a API roda no Docker) e reinicie a API.
+
+PDFs com texto são enviados ao modelo como texto, o que é rápido e funciona até com modelos só de texto. Prints, fotos e PDFs escaneados vão como imagem. XML de NF-e é lido sem IA.
 ## Exportação
 
 Os botões **Excel** e **PDF** ficam no topo de Produtos, Movimentações, Fornecedores, Compras e Relatório de compras, e exportam exatamente o que está filtrado.

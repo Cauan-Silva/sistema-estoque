@@ -1,4 +1,8 @@
-from backend.orcamentos import leitura
+import json
+
+from fpdf import FPDF
+
+from backend.orcamentos import leitura, ollama
 from backend.tests.apoio_compras import criar_fornecedor, criar_produto, novo_cliente
 
 XML_NFE = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -45,16 +49,18 @@ def test_ler_xml_de_nfe_sem_ia(cliente_autenticado, monkeypatch):
 
 def test_pdf_sem_chave_explica_configuracao(cliente_autenticado, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_URL", raising=False)
 
     resposta = ler(cliente_autenticado, PDF_FALSO, "orcamento.pdf")
 
     assert resposta.status_code == 503
-    assert "ANTHROPIC_API_KEY" in resposta.json()["detail"]
-    assert cliente_autenticado.get("/orcamentos/configuracao").json() == {"leitura_por_ia": False}
+    assert "OLLAMA_URL" in resposta.json()["detail"]
+    assert cliente_autenticado.get("/orcamentos/configuracao").json() == {"leitura_por_ia": False, "provedor": None}
 
 
 def test_pdf_lido_pela_ia(cliente_autenticado, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-teste")
+    monkeypatch.delenv("OLLAMA_URL", raising=False)
     enviados = []
 
     def chamar(corpo):
@@ -82,7 +88,7 @@ def test_pdf_lido_pela_ia(cliente_autenticado, monkeypatch):
 
     assert resposta.status_code == 200
     dados = resposta.json()
-    assert dados["origem"] == "ia"
+    assert dados["origem"] == "anthropic"
     assert dados["fornecedor_sugerido"]["nome"] == "Fibratech Telecom Importação Ltda"
     assert len(dados["itens"]) == 1
     assert dados["itens"][0]["preco_unitario"] == 0.439
@@ -170,3 +176,72 @@ def test_criar_solicitacao_valida_conjunto(cliente_autenticado):
     assert inexistente.status_code == 404
 
     assert cliente_autenticado.get("/solicitacoes-compra").json() == []
+
+
+def pdf_com_texto():
+    documento = FPDF()
+    documento.add_page()
+    documento.set_font("Helvetica", size=11)
+    for linha in [
+        "ORCAMENTO DE VENDA - FIBRATECH TELECOM IMPORTACAO LTDA",
+        "CODIGO DESCRICAO UN QTD VLR UNIT VLR IPI PRECO VLR TOTAL",
+        "301 Adaptador (acoplador) APC/VERDE UN 1.000,00 0,40 0,04 0,44 439,00",
+        "FRETE 0,00 VALOR TOTAL 439,00",
+    ]:
+        documento.cell(0, 8, linha, new_x="LMARGIN", new_y="NEXT")
+    return bytes(documento.output())
+
+
+def test_ollama_le_pdf_como_texto(cliente_autenticado, monkeypatch):
+    monkeypatch.setenv("OLLAMA_URL", "http://ollama.teste:11434")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-que-nao-deve-ser-usada")
+    monkeypatch.delenv("LEITURA_ORCAMENTOS", raising=False)
+    enviados = []
+
+    def chamar(corpo):
+        enviados.append(corpo)
+        return {"message": {"content": json.dumps({
+            "tipo_documento": "orcamento",
+            "fornecedor_nome": "FIBRATECH TELECOM IMPORTACAO LTDA",
+            "frete": 0,
+            "itens": [{"codigo": "301", "descricao": "Adaptador (acoplador) APC/VERDE",
+                       "quantidade": 1000, "preco_unitario": 0.44, "valor_total": 439}],
+        })}}
+
+    monkeypatch.setattr(ollama, "chamar_ollama", chamar)
+    monkeypatch.setattr(leitura, "chamar_api", lambda corpo: (_ for _ in ()).throw(AssertionError("Anthropic usada")))
+
+    assert cliente_autenticado.get("/orcamentos/configuracao").json() == {"leitura_por_ia": True, "provedor": "ollama"}
+
+    resposta = ler(cliente_autenticado, pdf_com_texto(), "orcamento.pdf")
+
+    assert resposta.status_code == 200
+    assert resposta.json()["itens"][0]["preco_unitario"] == 0.44
+    mensagem = enviados[0]["messages"][1]
+    assert "Adaptador (acoplador) APC/VERDE" in mensagem["content"]
+    assert "images" not in mensagem
+    assert enviados[0]["format"]["type"] == "object"
+
+
+def test_ollama_le_imagem_e_trata_resposta_invalida(cliente_autenticado, monkeypatch):
+    monkeypatch.setenv("OLLAMA_URL", "http://ollama.teste:11434")
+    enviados = []
+
+    def chamar(corpo):
+        enviados.append(corpo)
+        return {"message": {"content": "não sei"}}
+
+    monkeypatch.setattr(ollama, "chamar_ollama", chamar)
+
+    resposta = ler(cliente_autenticado, b"\x89PNG\r\n\x1a\n imagem", "print.png")
+
+    assert resposta.status_code == 422
+    assert len(enviados[0]["messages"][1]["images"]) == 1
+
+
+def test_escolher_anthropic_mesmo_com_ollama(monkeypatch):
+    monkeypatch.setenv("OLLAMA_URL", "http://ollama.teste:11434")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "chave")
+    monkeypatch.setenv("LEITURA_ORCAMENTOS", "anthropic")
+
+    assert leitura.provedor_ia() == "anthropic"

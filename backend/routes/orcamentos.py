@@ -9,7 +9,7 @@ from backend.orcamentos.correspondencia import (
 from backend.orcamentos.leitura import (
     ErroLeitura,
     extrair,
-    leitura_por_ia_configurada,
+    provedor_ia,
 )
 from backend.permissoes import exigir
 from backend.repositorio import listar_produtos
@@ -62,8 +62,9 @@ def _produtos():
 
 @router.get("/configuracao")
 def configuracao():
-    """Diz à tela se PDF e imagens podem ser lidos (chave da Anthropic configurada)."""
-    return {"leitura_por_ia": leitura_por_ia_configurada()}
+    """Diz à tela se PDF e imagens podem ser lidos e por qual IA."""
+    provedor = provedor_ia()
+    return {"leitura_por_ia": provedor is not None, "provedor": provedor}
 
 
 @router.post(

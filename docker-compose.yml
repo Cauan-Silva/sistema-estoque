@@ -37,6 +37,12 @@ services:
       MERCADO_LIVRE_REDIRECT_URI: ${MERCADO_LIVRE_REDIRECT_URI:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      LEITURA_ORCAMENTOS: ${LEITURA_ORCAMENTOS:-}
+    extra_hosts:
+      # Permite usar OLLAMA_URL=http://host.docker.internal:11434 (Ollama instalado no próprio PC)
+      - "host.docker.internal:host-gateway"
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
