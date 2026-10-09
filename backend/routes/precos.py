@@ -1,10 +1,16 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from backend.autenticacao import obter_usuario_atual
+from backend.permissoes import exigir
 from backend.precos.historico import historico_do_produto
+from backend.precos.referencias import (
+    excluir_referencia,
+    listar_referencias,
+    registrar_referencia,
+)
 from backend.precos.servico import consultar_fontes, fontes_disponiveis
 
 
@@ -69,11 +75,37 @@ class FonteResposta(BaseModel):
     resumo: ResumoOfertas | None
 
 
+class ReferenciaResposta(BaseModel):
+    id: int
+    produto_id: int
+    valor: float
+    fonte: str
+    link: str | None
+    observacao: str | None
+    usuario: str | None
+    data_registro: datetime
+
+
+class ReferenciaEntrada(BaseModel):
+    valor: float = Field(ge=0)
+    fonte: str = Field(default="Mercado Livre", min_length=2, max_length=60)
+    link: str | None = Field(default=None, max_length=500)
+    observacao: str | None = Field(default=None, max_length=300)
+
+    @field_validator("link")
+    @classmethod
+    def link_web(cls, link):
+        if link and not link.strip().lower().startswith(("http://", "https://")):
+            raise ValueError("O link precisa começar com http:// ou https://.")
+        return link.strip() if link else None
+
+
 class ConsultaPrecosResposta(BaseModel):
     produto: ProdutoReferencia
     resumo: ResumoHistorico
     compras: list[CompraHistorico]
     cotacoes: list[CotacaoHistorico]
+    referencias: list[ReferenciaResposta]
     externas: list[FonteResposta]
 
 
@@ -112,5 +144,45 @@ def consultar_produto(
 
     return {
         **historico,
+        "referencias": listar_referencias(produto_id, limite),
         "externas": consultar_fontes(termo, limite) if externas else [],
     }
+
+
+@router.post(
+    "/produtos/{produto_id}/referencias",
+    dependencies=[exigir("solicitacoes.editar")],
+    response_model=ReferenciaResposta,
+    status_code=status.HTTP_201_CREATED
+)
+def anotar_referencia(
+    produto_id: int,
+    dados: ReferenciaEntrada,
+    usuario=Depends(obter_usuario_atual)
+):
+    referencia, erro = registrar_referencia(
+        produto_id=produto_id,
+        valor=dados.valor,
+        fonte=dados.fonte.strip(),
+        link=dados.link,
+        observacao=dados.observacao.strip() if dados.observacao else None,
+        usuario_id=usuario[0],
+    )
+
+    if erro == "produto_nao_encontrado":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado.")
+
+    if erro or referencia is None:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Não foi possível salvar o preço de referência.")
+
+    return referencia
+
+
+@router.delete(
+    "/referencias/{referencia_id}",
+    dependencies=[exigir("solicitacoes.editar")],
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def remover_referencia(referencia_id: int):
+    if not excluir_referencia(referencia_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Preço de referência não encontrado.")

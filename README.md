@@ -230,7 +230,8 @@ Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Forn
 O botão **Preços** de cada produto mostra:
 
 - **Histórico interno**: último preço pago, média, menor e maior, últimas compras e últimas cotações. Funciona sempre.
-- **Preços de mercado**: ofertas do Mercado Livre, com menor preço, mediana e maior. É opcional.
+- **Preços de mercado**: botões que abrem a busca do produto no Mercado Livre e no Google Shopping, e um campo para anotar o preço encontrado (loja, link e observação). Os preços anotados ficam no histórico do produto e aparecem ao lado do preço na cotação.
+- **Consulta automática no Mercado Livre** (opcional): só funciona se o Mercado Livre liberar a busca para o seu aplicativo.
 
 O formulário de cotação também mostra o último preço pago e a média ao lado de cada item.
 

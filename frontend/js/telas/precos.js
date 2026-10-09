@@ -1,5 +1,23 @@
 import { api, montarQuery } from "../api.js";
-import { abrirDialogo, executar, formatar, h, tabela } from "../ui.js";
+import { pode } from "../sessao.js";
+import { abrirDialogo, avisar, executar, formatar, h, tabela } from "../ui.js";
+
+function linkMercadoLivre(termo) {
+  return `https://lista.mercadolivre.com.br/${encodeURIComponent(termo.trim().replace(/\s+/g, "-"))}`;
+}
+
+function linkGoogleShopping(termo) {
+  return `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(termo.trim())}`;
+}
+
+function precoReferencia(valor) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(valor);
+}
 
 function bloco(titulo, ...conteudo) {
   return h("section", { class: "bloco-precos" }, h("h3", {}, titulo), conteudo);
@@ -23,7 +41,7 @@ function resumoHistorico(dados) {
 
 function fonteExterna(fonte) {
   if (fonte.situacao !== "ok") {
-    return h("p", { class: fonte.situacao === "erro" ? "erro" : "suave" }, `${fonte.fonte}: ${fonte.mensagem}`);
+    return null;
   }
 
   return [
@@ -97,7 +115,116 @@ export function abrirConsultaPrecos(produto) {
           { vazio: "Nenhuma cotação registrada para este produto." }
         )
       ),
-      bloco("Preços de mercado", dados.externas.map(fonteExterna))
+      blocoMercado(dados)
+    );
+  }
+
+  function blocoMercado(dados) {
+    const termo = busca.value.trim() || produto.nome;
+    const automaticas = dados.externas.map(fonteExterna).filter(Boolean);
+
+    const atalhos = h(
+      "div",
+      { class: "atalhos-mercado" },
+      h(
+        "a",
+        { class: "botao", href: linkMercadoLivre(termo), target: "_blank", rel: "noopener noreferrer" },
+        `Ver "${termo}" no Mercado Livre ↗`
+      ),
+      h(
+        "a",
+        { class: "botao", href: linkGoogleShopping(termo), target: "_blank", rel: "noopener noreferrer" },
+        "Google Shopping ↗"
+      )
+    );
+
+    const valor = h("input", { type: "number", min: 0, step: "0.01", placeholder: "0,00" });
+    const fonte = h("input", { value: "Mercado Livre", maxlength: 60 });
+    const link = h("input", { type: "url", maxlength: 500, placeholder: "Cole o link do anúncio (opcional)" });
+    const observacao = h("input", { maxlength: 300, placeholder: "Ex.: frete grátis, vendedor oficial" });
+
+    async function anotar(evento) {
+      evento?.preventDefault();
+      const numero = Number(String(valor.value).replace(",", "."));
+      if (valor.value === "" || !Number.isFinite(numero) || numero < 0) {
+        avisar("Informe o preço encontrado.", "erro");
+        valor.focus();
+        return;
+      }
+      try {
+        await api.post(`/precos/produtos/${produto.id}/referencias`, {
+          valor: numero,
+          fonte: fonte.value.trim() || "Mercado Livre",
+          link: link.value.trim() || null,
+          observacao: observacao.value.trim() || null,
+        });
+        avisar("Preço de referência anotado.");
+        carregar();
+      } catch (falha) {
+        avisar(falha.message, "erro");
+      }
+    }
+
+    async function remover(referencia) {
+      try {
+        await api.delete(`/precos/referencias/${referencia.id}`);
+        avisar("Preço de referência removido.");
+        carregar();
+      } catch (falha) {
+        avisar(falha.message, "erro");
+      }
+    }
+
+    const podeAnotar = pode("solicitacoes.editar");
+
+    return bloco(
+      "Preços de mercado",
+      h(
+        "p",
+        { class: "suave" },
+        "Abra a busca na loja, veja os preços e anote aqui o que servir de referência para negociar."
+      ),
+      atalhos,
+      automaticas,
+      podeAnotar
+        ? h(
+            "div",
+            {
+              class: "form-referencia",
+              role: "group",
+              "aria-label": "Anotar preço de referência",
+              onKeydown: (evento) => {
+                if (evento.key === "Enter" && evento.target.tagName === "INPUT") anotar(evento);
+              },
+            },
+            h("label", {}, "Preço (R$)", valor),
+            h("label", {}, "Loja", fonte),
+            h("label", { class: "largo" }, "Link", link),
+            h("label", { class: "largo" }, "Observação", observacao),
+            h("button", { type: "button", class: "primario", onClick: anotar }, "Anotar preço")
+          )
+        : null,
+      tabela(
+        [
+          { titulo: "Data", classe: "numero", valor: (r) => formatar.data(r.data_registro) },
+          {
+            titulo: "Loja",
+            valor: (r) => (r.link ? h("a", { href: r.link, target: "_blank", rel: "noopener noreferrer" }, r.fonte) : r.fonte),
+          },
+          { titulo: "Observação", valor: (r) => r.observacao || "—" },
+          { titulo: "Anotado por", valor: (r) => r.usuario || "—" },
+          { titulo: "Preço", classe: "direita numero", valor: (r) => precoReferencia(r.valor) },
+          ...(podeAnotar
+            ? [{
+                titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
+                classe: "acoes",
+                valor: (r) => h("button", { type: "button", class: "pequeno perigo", onClick: () => remover(r) }, "Remover"),
+              }]
+            : []),
+        ],
+        dados.referencias,
+        { vazio: "Nenhum preço de referência anotado ainda." }
+      )
     );
   }
 
@@ -136,9 +263,13 @@ export async function referenciaPreco(produtoId) {
     const dados = await api.get(`/precos/produtos/${produtoId}?externas=false&limite=1`);
     const r = dados.resumo;
 
-    if (!r.compras) return "Ainda não comprado pelo sistema.";
+    const mercado = dados.referencias[0]
+      ? ` Mercado: ${precoReferencia(dados.referencias[0].valor)} (${dados.referencias[0].fonte}).`
+      : "";
 
-    return `Último pago ${formatar.moeda(r.ultimo_pago)}, média ${formatar.moeda(r.media_paga)}.`;
+    if (!r.compras) return `Ainda não comprado pelo sistema.${mercado}`;
+
+    return `Último pago ${formatar.moeda(r.ultimo_pago)}, média ${formatar.moeda(r.media_paga)}.${mercado}`;
   } catch {
     return "";
   }

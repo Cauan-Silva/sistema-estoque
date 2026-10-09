@@ -8,7 +8,7 @@ from backend.precos.autorizar_mercado_livre import extrair_codigo
 from backend.precos.credenciais import salvar_credenciais
 from backend.database import conectar
 from backend.precos.mercado_livre import NOME_CREDENCIAL, MercadoLivre, trocar_codigo
-from backend.tests.apoio_compras import compra_registrada
+from backend.tests.apoio_compras import compra_registrada, criar_produto, novo_cliente
 
 
 @pytest.fixture(autouse=True)
@@ -371,3 +371,32 @@ def test_busca_bloqueada_usa_o_catalogo(monkeypatch):
     ]
     assert resultado.ofertas[0].link == "https://www.mercadolivre.com.br/p/MLB111"
     assert chamadas[:2] == ["/sites/MLB/search", "/products/search"]
+
+
+def test_anotar_e_remover_preco_de_referencia(cliente_autenticado, monkeypatch):
+    monkeypatch.setattr(servico, "FONTES", [])
+    produto = criar_produto(cliente_autenticado, "Switch 8 portas")
+
+    resposta = cliente_autenticado.post(f"/precos/produtos/{produto}/referencias", json={
+        "valor": 129.9,
+        "link": "https://lista.mercadolivre.com.br/switch-8-portas",
+        "observacao": "Frete grátis",
+    })
+
+    assert resposta.status_code == 201
+    referencia = resposta.json()
+    assert referencia["fonte"] == "Mercado Livre"
+    assert referencia["usuario"] == "Usuario Testes"
+
+    consulta = cliente_autenticado.get(f"/precos/produtos/{produto}?externas=false").json()
+    assert [r["valor"] for r in consulta["referencias"]] == [129.9]
+
+    assert cliente_autenticado.post(
+        f"/precos/produtos/{produto}/referencias", json={"valor": 1, "link": "javascript:alert(1)"}
+    ).status_code == 422
+    assert cliente_autenticado.post("/precos/produtos/9999/referencias", json={"valor": 1}).status_code == 404
+    assert novo_cliente("CONSULTA").post(f"/precos/produtos/{produto}/referencias", json={"valor": 1}).status_code == 403
+
+    assert cliente_autenticado.delete(f"/precos/referencias/{referencia['id']}").status_code == 204
+    assert cliente_autenticado.delete(f"/precos/referencias/{referencia['id']}").status_code == 404
+    assert cliente_autenticado.get(f"/precos/produtos/{produto}?externas=false").json()["referencias"] == []

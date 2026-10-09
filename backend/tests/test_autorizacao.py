@@ -121,6 +121,8 @@ ROTAS_PROTEGIDAS = [
     ("get", "/exportacoes/relatorio-compras"),
     ("get", "/precos/fontes"),
     ("get", "/precos/produtos/1"),
+    ("post", "/precos/produtos/1/referencias"),
+    ("delete", "/precos/referencias/1"),
 ]
 
 

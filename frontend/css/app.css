@@ -2833,3 +2833,39 @@ button.link {
   display: flex;
   justify-content: flex-end;
 }
+
+/* Preços de mercado: atalhos e anotação de referência */
+.atalhos-mercado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.form-referencia {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: end;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-medio);
+  background: var(--superficie-2);
+}
+
+.form-referencia label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.form-referencia .largo {
+  grid-column: 1 / -1;
+}
+
+.form-referencia button {
+  justify-self: start;
+}
