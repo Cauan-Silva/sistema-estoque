@@ -56,3 +56,36 @@ jobs:
       - name: Run tests
         run: |
           pytest -v
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env for Docker
+        run: |
+          cp .env.example .env
+          sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=senha-ci/" .env
+          sed -i "s/^JWT_SECRET_KEY=.*/JWT_SECRET_KEY=chave-ci-docker/" .env
+
+      - name: Build and start containers
+        run: docker compose up -d --build --wait --wait-timeout 180
+
+      - name: Check API, frontend and migrations
+        run: |
+          curl --fail --silent http://localhost:8000/health
+          curl --fail --silent http://localhost:8000/app/ | grep -q "Estoque"
+          docker compose exec -T db psql -U postgres -d sistema_estoque -tAc "SELECT version_num FROM alembic_version" | grep -q "0001"
+          curl --fail --silent -X POST http://localhost:8000/usuarios \
+            -H "Content-Type: application/json" \
+            -d '{"nome":"Admin CI","email":"admin@ci.com","senha":"senha12345"}' | grep -q ADMINISTRADOR
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
