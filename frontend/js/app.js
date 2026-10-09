@@ -1,6 +1,7 @@
 import { api, obterToken, removerToken } from "./api.js";
 import { h, carregando, vazio } from "./ui.js";
 import { seletorTema } from "./tema.js";
+import { atualizarNotificacoes, pararNotificacoes, sinoNotificacoes } from "./notificacoes.js";
 import { NOMES_PERFIS, definirUsuario, pode } from "./sessao.js";
 import { telaUsuarios } from "./telas/usuarios.js";
 import { telaAuditoria } from "./telas/auditoria.js";
@@ -83,6 +84,7 @@ function marca() {
 }
 
 function sair() {
+  pararNotificacoes();
   removerToken();
   usuarioAtual = null;
   definirUsuario(null);
@@ -180,7 +182,7 @@ function montarEstrutura() {
     "div",
     { class: "estrutura" },
     h("a", { class: "pular", href: "#conteudo", onClick: (e) => { e.preventDefault(); areaConteudo.focus(); } }, "Pular para o conteúdo"),
-    h("header", { class: "barra-topo" }, marca(), menu, h("div", { class: "barra-direita" }, conta, botaoMenu)),
+    h("header", { class: "barra-topo" }, marca(), menu, h("div", { class: "barra-direita" }, sinoNotificacoes(grupo, aoNavegar), conta, botaoMenu)),
     areaConteudo
   );
 
@@ -266,6 +268,7 @@ async function navegar() {
   }
 
   marcarMenu(hash);
+  atualizarNotificacoes();
 
   const rota = ROTAS.find((item) => item.padrao.test(hash));
 
