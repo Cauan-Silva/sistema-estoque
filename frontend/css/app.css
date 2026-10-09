@@ -2616,3 +2616,13 @@ tr.selecionavel:focus-visible {
     display: none;
   }
 }
+
+/* Ações das cotações e da planilha de orçamento */
+.acoes-orcamento,
+.acoes-cotacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}

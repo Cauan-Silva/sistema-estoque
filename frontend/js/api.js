@@ -82,7 +82,9 @@ export async function requisicao(metodo, caminho, corpo, opcoes = {}) {
     cabecalhos.Authorization = `Bearer ${token}`;
   }
 
-  if (corpo !== undefined) {
+  const formulario = corpo instanceof FormData;
+
+  if (corpo !== undefined && !formulario) {
     cabecalhos["Content-Type"] = "application/json";
   }
 
@@ -92,7 +94,7 @@ export async function requisicao(metodo, caminho, corpo, opcoes = {}) {
     resposta = await fetch(caminho, {
       method: metodo,
       headers: cabecalhos,
-      body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
+      body: corpo === undefined ? undefined : formulario ? corpo : JSON.stringify(corpo),
     });
   } catch {
     throw new ErroApi("Sem conexão com a API. Verifique se o servidor está rodando.", 0);
@@ -129,6 +131,11 @@ export const api = {
   put: (caminho, corpo) => requisicao("PUT", caminho, corpo),
   patch: (caminho, corpo) => requisicao("PATCH", caminho, corpo ?? {}),
   delete: (caminho) => requisicao("DELETE", caminho),
+  enviarArquivo(caminho, arquivo, campo = "arquivo") {
+    const corpo = new FormData();
+    corpo.append(campo, arquivo);
+    return requisicao("POST", caminho, corpo);
+  },
 };
 
 export function montarQuery(parametros) {

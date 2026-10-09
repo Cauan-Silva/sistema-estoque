@@ -1,6 +1,8 @@
-import { api, listarTodos } from "../api.js";
+import { api, baixarArquivo, listarTodos } from "../api.js";
 import {
   abrirDialogo,
+  avisar,
+  botoesExportar,
   cabecalho,
   abrirFormulario,
   confirmar,
@@ -314,6 +316,57 @@ export async function telaSolicitacao(area, id) {
     }
   }
 
+  /* ---------- Planilha de orçamento ---------- */
+
+  async function baixar(caminho, evento) {
+    const botao = evento?.currentTarget;
+    if (botao) botao.disabled = true;
+    try {
+      const nome = await baixarArquivo(caminho);
+      avisar(`Arquivo ${nome} baixado.`);
+    } catch (falha) {
+      avisar(falha.message, "erro");
+    } finally {
+      if (botao) botao.disabled = false;
+    }
+  }
+
+  async function enviarPlanilha(arquivo, substituir = false) {
+    const caminho = `/solicitacoes-compra/${id}/cotacoes/importar${substituir ? "?substituir=true" : ""}`;
+
+    try {
+      const cotacao = await api.enviarArquivo(caminho, arquivo);
+      avisar(`Cotação de ${cotacao.fornecedor} ${substituir ? "atualizada" : "importada"}: ${formatar.moeda(cotacao.valor_total)}.`);
+      recarregar();
+    } catch (falha) {
+      if (falha.status === 409 && !substituir && /já possui cotação/.test(falha.message)) {
+        const ok = await confirmar({
+          titulo: "Substituir cotação?",
+          mensagem: `${falha.message} Deseja substituir os valores dela pelos da planilha?`,
+          textoAcao: "Substituir cotação",
+        });
+        if (ok) await enviarPlanilha(arquivo, true);
+        return;
+      }
+      avisar(falha.message, "erro");
+    }
+  }
+
+  function importarPlanilha() {
+    const seletor = h("input", {
+      type: "file",
+      accept: ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      hidden: true,
+      onChange: () => {
+        const [arquivo] = seletor.files;
+        seletor.remove();
+        if (arquivo) enviarPlanilha(arquivo);
+      },
+    });
+    document.body.append(seletor);
+    seletor.click();
+  }
+
   function cartaoCotacao(cotacao) {
     const aprovada = solicitacao.cotacao_aprovada_id === cotacao.id;
     const podeAlterar = PODE_COTAR.includes(status) && permite.cotar;
@@ -337,15 +390,21 @@ export async function telaSolicitacao(area, id) {
             cotacao.observacao ? `. ${cotacao.observacao}` : ""
           )
         ),
-        podeAlterar
-          ? h(
-              "div",
-              {},
-              h("button", { class: "pequeno", onClick: () => formularioCotacao(cotacao) }, "Editar"),
-              " ",
-              h("button", { class: "pequeno perigo", onClick: () => excluirCotacao(cotacao) }, "Excluir")
-            )
-          : null
+        h(
+          "div",
+          { class: "acoes-cotacao" },
+          h(
+            "button",
+            {
+              class: "pequeno",
+              title: "Baixar esta cotação no formato da planilha de orçamento",
+              onClick: (evento) => baixar(`/solicitacoes-compra/${id}/cotacoes/${cotacao.id}/planilha`, evento),
+            },
+            "Planilha"
+          ),
+          podeAlterar ? h("button", { class: "pequeno", onClick: () => formularioCotacao(cotacao) }, "Editar") : null,
+          podeAlterar ? h("button", { class: "pequeno perigo", onClick: () => excluirCotacao(cotacao) }, "Excluir") : null
+        )
       ),
       tabela(
         [
@@ -698,9 +757,25 @@ export async function telaSolicitacao(area, id) {
             "div",
             { class: "titulo-secao" },
             h("h2", {}, "Cotações"),
-            PODE_COTAR.includes(status) && permite.cotar
-              ? h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação")
-              : null
+            h(
+              "div",
+              { class: "acoes-orcamento" },
+              cotacoes.length ? botoesExportar(`/solicitacoes-compra/${id}/cotacoes/exportar`) : null,
+              h(
+                "button",
+                {
+                  title: "Planilha padrão com os itens desta solicitação, para o fornecedor preencher",
+                  onClick: (evento) => baixar(`/solicitacoes-compra/${id}/cotacoes/modelo`, evento),
+                },
+                "Baixar modelo"
+              ),
+              PODE_COTAR.includes(status) && permite.cotar
+                ? h("button", { onClick: importarPlanilha }, "Importar planilha")
+                : null,
+              PODE_COTAR.includes(status) && permite.cotar
+                ? h("button", { class: "primario", onClick: () => formularioCotacao() }, "Registrar cotação")
+                : null
+            )
           ),
           cotacoes.length
             ? cotacoes.map(cartaoCotacao)
