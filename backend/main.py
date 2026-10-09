@@ -62,6 +62,9 @@ from backend.routes.notificacoes import (
 from backend.routes.anexos import (
     router as anexos_router
 )
+from backend.routes.sugestoes import (
+    router as sugestoes_router
+)
 
 
 configurar_logs()
@@ -135,6 +138,7 @@ app.include_router(precos_router)
 app.include_router(orcamentos_router)
 app.include_router(notificacoes_router)
 app.include_router(anexos_router)
+app.include_router(sugestoes_router)
 
 
 PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
