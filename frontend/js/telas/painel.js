@@ -1,6 +1,26 @@
 import { api, listarTodos, montarQuery } from "../api.js";
-import { barras, colunasAgrupadas } from "../graficos.js";
-import { cabecalho, etiquetaStatus, formatar, h, tabela } from "../ui.js";
+import { anel, barras, cartaoIndicador, colunasAgrupadas, miniBarras, progresso } from "../graficos.js";
+import { cabecalho, corStatus, etiquetaStatus, formatar, h, tabela } from "../ui.js";
+
+const CORES_CATEGORIAS = 6;
+
+function corDaCategoria(categoriaId) {
+  return `var(--cor-${((Number(categoriaId) || 1) - 1) % CORES_CATEGORIAS + 1})`;
+}
+
+function variacaoMensal(atual, anterior) {
+  if (!anterior) return null;
+
+  const percentual = Math.round(((atual - anterior) / anterior) * 100);
+
+  if (!percentual) return null;
+
+  return {
+    texto: `${Math.abs(percentual)}% vs mês anterior`,
+    sentido: percentual > 0 ? "alta" : "baixa",
+    tom: "neutro",
+  };
+}
 
 const MESES_GRAFICO = 6;
 
@@ -19,18 +39,19 @@ function valorPorCategoria(produtos) {
   const totais = new Map();
 
   produtos.forEach((produto) => {
-    const valor = produto.quantidade * produto.preco;
-    totais.set(produto.categoria, (totais.get(produto.categoria) || 0) + valor);
+    const atual = totais.get(produto.categoria_id) || { rotulo: produto.categoria, valor: 0 };
+    atual.valor += produto.quantidade * produto.preco;
+    totais.set(produto.categoria_id, atual);
   });
 
   const ordenados = [...totais.entries()]
-    .map(([rotulo, valor]) => ({ rotulo, valor }))
+    .map(([id, item]) => ({ ...item, cor: corDaCategoria(id) }))
     .sort((a, b) => b.valor - a.valor);
 
   if (ordenados.length <= 7) return ordenados;
 
   const outras = ordenados.slice(6).reduce((soma, item) => soma + item.valor, 0);
-  return [...ordenados.slice(0, 6), { rotulo: "Outras", valor: outras }];
+  return [...ordenados.slice(0, 6), { rotulo: "Outras", valor: outras, cor: "var(--tinta-suave)" }];
 }
 
 function movimentosPorMes(movimentacoes, meses) {
@@ -69,30 +90,57 @@ export async function telaPainel(area) {
   ]);
 
   const porMes = movimentosPorMes(movimentacoes, meses);
-
-  const indicador = (rotulo, valor, alerta = false) =>
-    h("div", { class: `indicador ${alerta ? "alerta" : ""}` }, h("dt", {}, rotulo), h("dd", {}, valor));
+  const categorias = valorPorCategoria(produtos);
 
   const pendentes = [...compradas, ...aprovadas, ...emCotacao, ...abertas].slice(0, 8);
 
   area.replaceChildren(
     cabecalho("Painel", "Situação do estoque e das compras em andamento."),
     h(
-      "dl",
-      { class: "indicadores" },
-      indicador("Valor em estoque", formatar.moeda(resumo.valor_total_estoque)),
-      indicador("Produtos", formatar.numero(resumo.total_produtos)),
-      indicador("Unidades", formatar.numero(resumo.unidades_em_estoque)),
-      indicador(
-        `Com ${LIMITE_ESTOQUE_BAIXO} ou menos`,
-        formatar.numero(resumo.produtos_estoque_baixo),
-        resumo.produtos_estoque_baixo > 0
-      ),
-      indicador(
-        "Compras em andamento",
-        formatar.numero(abertas.length + emCotacao.length + aprovadas.length + compradas.length)
-      ),
-      indicador("Aguardando entrega", formatar.numero(compradas.length))
+      "div",
+      { class: "cartoes-indicador" },
+      cartaoIndicador({
+        rotulo: "Valor em estoque",
+        valor: formatar.moeda(resumo.valor_total_estoque),
+        cor: "1",
+        detalhe: `${formatar.numero(resumo.total_categorias)} categorias`,
+        visual: miniBarras(categorias, formatar.moeda),
+      }),
+      cartaoIndicador({
+        rotulo: "Unidades em estoque",
+        valor: formatar.numero(resumo.unidades_em_estoque),
+        cor: "4",
+        detalhe: `em ${formatar.numero(resumo.total_produtos)} produtos`,
+        variacao: variacaoMensal(porMes.entradas.at(-1), porMes.entradas.at(-2)),
+        visual: miniBarras(
+          meses.map((mes, indice) => ({ rotulo: mes.rotulo, valor: porMes.entradas[indice] })),
+          (valor) => `${formatar.numero(valor)} un. de entrada`
+        ),
+      }),
+      cartaoIndicador({
+        rotulo: `Estoque baixo (${LIMITE_ESTOQUE_BAIXO} ou menos)`,
+        valor: formatar.numero(resumo.produtos_estoque_baixo),
+        cor: resumo.produtos_estoque_baixo > 0 ? "alerta" : "3",
+        detalhe:
+          resumo.produtos_estoque_baixo > 0
+            ? `de ${formatar.numero(resumo.total_produtos)} produtos precisam de reposição`
+            : "Nenhum produto precisa de reposição",
+        visual: progresso(resumo.produtos_estoque_baixo, resumo.total_produtos, "Parte dos produtos com estoque baixo"),
+      }),
+      cartaoIndicador({
+        rotulo: "Compras em andamento",
+        valor: formatar.numero(abertas.length + emCotacao.length + aprovadas.length + compradas.length),
+        cor: "2",
+        detalhe: `${formatar.numero(compradas.length)} aguardando entrega`,
+        visual: anel(
+          [
+            { nome: "Abertas", valor: abertas.length, cor: `var(--fibra-${corStatus("ABERTA")})` },
+            { nome: "Em cotação", valor: emCotacao.length, cor: `var(--fibra-${corStatus("EM_COTACAO")})` },
+            { nome: "Aprovadas", valor: aprovadas.length, cor: `var(--fibra-${corStatus("APROVADA")})` },
+            { nome: "Compradas", valor: compradas.length, cor: `var(--fibra-${corStatus("COMPRADA")})` },
+          ]
+        ),
+      })
     ),
     h(
       "div",
@@ -100,7 +148,7 @@ export async function telaPainel(area) {
       barras({
         titulo: "Valor em estoque por categoria",
         descricao: "Quantidade × preço de cada produto, somado por categoria.",
-        itens: valorPorCategoria(produtos),
+        itens: categorias,
         formatar: formatar.moeda,
         vazio: "Cadastre produtos para ver o valor por categoria.",
       }),

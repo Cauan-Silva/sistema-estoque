@@ -193,7 +193,7 @@ export function barras({ titulo, descricao, itens, formatar, cor = "var(--grafic
               comDica(
                 h("div", {
                   class: "barra-valor",
-                  style: { width: `${Math.max((item.valor / maximo) * 100, item.valor ? 1 : 0)}%`, background: cor },
+                  style: { width: `${Math.max((item.valor / maximo) * 100, item.valor ? 1 : 0)}%`, background: item.cor || cor },
                 }),
                 `${item.rotulo}: ${formatar(item.valor)}`
               )
@@ -238,5 +238,132 @@ export function barraEmpilhada({ titulo, descricao, partes, formatar, vazio = "S
         )
     ),
     legenda(series)
+  );
+}
+
+
+/* ---------- Cartões de indicador com mini gráficos ---------- */
+
+/*
+ * cor: "1".."6" (paleta categórica) ou "alerta".
+ * variacao: { texto, sentido: "alta" | "baixa", tom: "bom" | "ruim" | "neutro" }
+ * visual: elemento de miniBarras, anel ou progresso.
+ */
+export function cartaoIndicador({ rotulo, valor, cor = "1", detalhe, variacao, visual }) {
+  return h(
+    "article",
+    { class: "cartao-indicador", dataset: { cor } },
+    h(
+      "div",
+      { class: "cartao-topo" },
+      h("h3", {}, rotulo),
+      variacao
+        ? h(
+            "span",
+            { class: "variacao", dataset: { tom: variacao.tom || "neutro" } },
+            h("span", { "aria-hidden": "true" }, variacao.sentido === "baixa" ? "▼" : "▲"),
+            variacao.texto
+          )
+        : null
+    ),
+    h(
+      "div",
+      { class: "cartao-corpo" },
+      h("div", {}, h("p", { class: "cartao-valor" }, valor), detalhe ? h("p", { class: "cartao-detalhe" }, detalhe) : null),
+      visual || null
+    )
+  );
+}
+
+export function miniBarras(itens, formatar = String) {
+  if (!itens.length || itens.every((item) => !item.valor)) {
+    return h("div", { class: "mini-barras vazio-mini", "aria-hidden": "true" });
+  }
+
+  const maximo = Math.max(...itens.map((item) => item.valor));
+
+  return h(
+    "div",
+    {
+      class: "mini-barras",
+      role: "img",
+      "aria-label": itens.map((item) => `${item.rotulo}: ${formatar(item.valor)}`).join("; "),
+    },
+    itens.map((item, indice) =>
+      comDica(
+        h("span", {
+          class: `mini-barra ${indice === itens.length - 1 ? "atual" : ""}`,
+          style: { height: `${Math.max((item.valor / maximo) * 100, item.valor ? 6 : 2)}%`, ...(item.cor ? { background: item.cor } : {}) },
+        }),
+        `${item.rotulo}: ${formatar(item.valor)}`
+      )
+    )
+  );
+}
+
+export function anel(partes, centro) {
+  const total = partes.reduce((soma, parte) => soma + parte.valor, 0);
+  let acumulado = 0;
+
+  const fatias = total
+    ? partes
+        .filter((parte) => parte.valor > 0)
+        .map((parte) => {
+          const inicio = (acumulado / total) * 360;
+          acumulado += parte.valor;
+          const fim = (acumulado / total) * 360;
+          return `${parte.cor} ${inicio}deg ${Math.max(inicio, fim - 2)}deg, var(--superficie) ${Math.max(inicio, fim - 2)}deg ${fim}deg`;
+        })
+        .join(", ")
+    : "var(--linha) 0deg 360deg";
+
+  return h(
+    "div",
+    { class: "anel-bloco" },
+    h(
+      "div",
+      {
+        class: "anel",
+        role: "img",
+        "aria-label": partes.map((parte) => `${parte.nome}: ${parte.valor}`).join("; "),
+        style: { background: `conic-gradient(${fatias})` },
+      },
+      h("span", { class: "anel-centro" }, centro ?? String(total))
+    ),
+    h(
+      "ul",
+      { class: "legenda-anel" },
+      partes.map((parte) =>
+        h(
+          "li",
+          {},
+          h("span", { class: "amostra", style: { background: parte.cor }, "aria-hidden": "true" }),
+          h("span", {}, parte.nome),
+          h("strong", { class: "numero" }, String(parte.valor))
+        )
+      )
+    )
+  );
+}
+
+export function progresso(valor, total, rotulo) {
+  const percentual = total ? Math.min(100, Math.round((valor / total) * 100)) : 0;
+
+  return h(
+    "div",
+    { class: "progresso-bloco" },
+    h(
+      "div",
+      {
+        class: "progresso",
+        role: "progressbar",
+        "aria-valuemin": "0",
+        "aria-valuemax": "100",
+        "aria-valuenow": String(percentual),
+        "aria-label": rotulo,
+      },
+      h("span", { style: { width: `${percentual}%` } })
+    ),
+    h("span", { class: "progresso-texto numero" }, `${percentual}%`)
   );
 }

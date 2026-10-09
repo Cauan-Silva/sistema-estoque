@@ -47,6 +47,14 @@
   --grafico-2: #d9770b;
   --grafico-3: #1a9e8f;
 
+  /* Paleta categórica para cartões e destaques (validada nos dois temas) */
+  --cor-1: #6a55d8;
+  --cor-2: #eb6834;
+  --cor-3: #1baf7a;
+  --cor-4: #2a78d6;
+  --cor-5: #e87ba4;
+  --cor-6: #eda100;
+
   --fonte: "Instrument Sans", system-ui, sans-serif;
   --fonte-titulo: "Young Serif", Georgia, serif;
 
@@ -93,6 +101,13 @@
     --grafico-2: #d07a1c;
     --grafico-3: #199e70;
 
+    --cor-1: #8a78ee;
+    --cor-2: #d95926;
+    --cor-3: #199e70;
+    --cor-4: #3987e5;
+    --cor-5: #d55181;
+    --cor-6: #c98500;
+
     --sombra-cartao: 0 1px 2px rgba(0, 0, 0, 0.3);
     --sombra-dialogo: 0 24px 64px rgba(0, 0, 0, 0.6);
 
@@ -130,6 +145,13 @@
   --grafico-1: #8a78ee;
   --grafico-2: #d07a1c;
   --grafico-3: #199e70;
+
+  --cor-1: #8a78ee;
+  --cor-2: #d95926;
+  --cor-3: #199e70;
+  --cor-4: #3987e5;
+  --cor-5: #d55181;
+  --cor-6: #c98500;
 
   --sombra-cartao: 0 1px 2px rgba(0, 0, 0, 0.3);
   --sombra-dialogo: 0 24px 64px rgba(0, 0, 0, 0.6);
@@ -849,7 +871,8 @@ td.acoes button + button {
 
 tfoot td {
   font-weight: 700;
-  border-top: 1px solid var(--linha-forte);
+  border-top: 2px solid var(--acento, var(--linha-forte));
+  background: color-mix(in srgb, var(--acento, var(--primario)) 8%, var(--superficie));
 }
 
 .paginacao {
@@ -896,7 +919,8 @@ tfoot td {
   font-weight: 600;
   padding: 3px 10px 3px 8px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--cor) 15%, var(--mistura-status-fundo));
+  background: color-mix(in srgb, var(--cor) 22%, var(--mistura-status-fundo));
+  border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent);
   color: color-mix(in srgb, var(--cor) var(--forca-status-texto), var(--mistura-status-texto));
   white-space: nowrap;
 }
@@ -1037,9 +1061,10 @@ tfoot td {
   flex-wrap: wrap;
   padding: 16px 20px;
   margin-bottom: 20px;
-  background: color-mix(in srgb, var(--cor) 9%, var(--superficie));
-  border: 1px solid color-mix(in srgb, var(--cor) 35%, var(--superficie));
-  border-left: 5px solid var(--cor);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--cor) 22%, var(--superficie)), color-mix(in srgb, var(--cor) 6%, var(--superficie)) 70%);
+  border: 1px solid color-mix(in srgb, var(--cor) 45%, var(--superficie));
+  border-left: 6px solid var(--cor);
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--cor) 70%, transparent);
   border-radius: var(--raio-grande);
 }
 
@@ -1101,7 +1126,7 @@ tfoot td {
 }
 
 .destaque {
-  background: var(--superficie);
+  background: color-mix(in srgb, var(--cor, var(--primario)) 9%, var(--superficie));
   border: 1px solid var(--linha);
   border-top: 4px solid var(--cor, var(--primario));
   border-radius: var(--raio-grande);
@@ -1930,4 +1955,260 @@ tr.selecionavel:focus-visible {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- Cores por módulo ---------- */
+
+.conteudo { --acento: var(--cor-1); }
+.conteudo[data-area="estoque"] { --acento: var(--cor-3); }
+.conteudo[data-area="compras"] { --acento: var(--cor-2); }
+.conteudo[data-area="relatorios"] { --acento: var(--cor-1); }
+.conteudo[data-area="admin"] { --acento: var(--cor-4); }
+
+.conteudo .secao > h2,
+.conteudo .titulo-secao > h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.conteudo .secao > h2::before,
+.conteudo .titulo-secao > h2::before {
+  content: "";
+  width: 5px;
+  height: 1.05em;
+  border-radius: 3px;
+  background: var(--acento);
+  flex: none;
+}
+
+.conteudo .quadro,
+.conteudo .ficha,
+.conteudo .grafico,
+.conteudo .filtros {
+  border-top: 3px solid var(--acento);
+}
+
+.conteudo .filtros + .quadro {
+  border-top: 1px solid var(--linha);
+}
+
+.conteudo th {
+  background: color-mix(in srgb, var(--acento) 7%, var(--superficie-2));
+}
+
+/* ---------- Cartões de indicador ---------- */
+
+.cartoes-indicador {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.cartao-indicador {
+  --cor: var(--cor-1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px 16px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--cor) 18%, transparent), transparent 55%),
+    color-mix(in srgb, var(--cor) 7%, var(--superficie));
+  border: 1px solid color-mix(in srgb, var(--cor) 30%, var(--linha));
+  border-top: 4px solid var(--cor);
+  border-radius: var(--raio-grande);
+  box-shadow: var(--sombra-cartao), 0 10px 24px -18px color-mix(in srgb, var(--cor) 80%, transparent);
+}
+
+.cartao-indicador[data-cor="1"] { --cor: var(--cor-1); }
+.cartao-indicador[data-cor="2"] { --cor: var(--cor-2); }
+.cartao-indicador[data-cor="3"] { --cor: var(--cor-3); }
+.cartao-indicador[data-cor="4"] { --cor: var(--cor-4); }
+.cartao-indicador[data-cor="5"] { --cor: var(--cor-5); }
+.cartao-indicador[data-cor="6"] { --cor: var(--cor-6); }
+.cartao-indicador[data-cor="alerta"] { --cor: var(--fibra-vermelho); }
+
+.cartao-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.cartao-topo h3 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--tinta-suave);
+}
+
+.cartao-topo h3::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--cor);
+}
+
+.variacao {
+  --tom: var(--tinta-suave);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--tom) 16%, var(--superficie));
+  color: color-mix(in srgb, var(--tom) 75%, var(--tinta));
+}
+
+.variacao[data-tom="bom"] { --tom: var(--fibra-verde); }
+.variacao[data-tom="ruim"] { --tom: var(--fibra-vermelho); }
+
+.cartao-corpo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.cartao-corpo > div:first-child {
+  min-width: 0;
+}
+
+.cartao-valor {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-size: clamp(1.6rem, 2.6vw, 2rem);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.cartao-indicador[data-cor="alerta"] .cartao-valor {
+  color: var(--fibra-vermelho);
+}
+
+.cartao-detalhe {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--tinta-suave);
+}
+
+.mini-barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 56px;
+  min-width: 72px;
+  max-width: 140px;
+  flex: 1 1 72px;
+}
+
+.mini-barra {
+  flex: 1 1 0;
+  min-width: 5px;
+  border-radius: 3px 3px 1px 1px;
+  background: var(--cor);
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.mini-barra.atual,
+.mini-barra:hover,
+.mini-barra:focus-visible {
+  opacity: 1;
+}
+
+.vazio-mini {
+  border-bottom: 2px dashed color-mix(in srgb, var(--cor) 40%, var(--linha));
+}
+
+.anel-bloco {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.anel {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.anel-centro {
+  position: absolute;
+  inset: 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--superficie);
+  font-family: var(--fonte-titulo);
+  font-size: 1.2rem;
+}
+
+.legenda-anel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.legenda-anel li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.legenda-anel .amostra {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.progresso-bloco {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.progresso {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cor) 16%, var(--superficie-2));
+  overflow: hidden;
+}
+
+.progresso span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cor);
+}
+
+.progresso-texto {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--tinta-suave);
+}
+
+/* Barras com cor própria (uma por categoria) ficam sempre opacas */
+.mini-barra[style*="background"] {
+  opacity: 1;
 }

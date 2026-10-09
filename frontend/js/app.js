@@ -58,6 +58,15 @@ let usuarioAtual = null;
 let estrutura = null;
 let areaConteudo = null;
 
+/* Cor de destaque por módulo (tokens --cor-N no CSS). */
+function areaDaRota(hash) {
+  if (/^#\/(produtos|categorias|movimentacoes)/.test(hash)) return "estoque";
+  if (/^#\/(fornecedores|solicitacoes|compras|formas-pagamento)/.test(hash)) return "compras";
+  if (/^#\/relatorio-compras/.test(hash)) return "relatorios";
+  if (/^#\/(usuarios|auditoria)/.test(hash)) return "admin";
+  return "painel";
+}
+
 function marca() {
   return h(
     "a",
@@ -274,6 +283,7 @@ async function navegar() {
 
   const parametros = hash.match(rota.padrao).slice(1);
 
+  areaConteudo.dataset.area = areaDaRota(hash);
   areaConteudo.replaceChildren(carregando());
 
   try {

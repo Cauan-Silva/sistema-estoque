@@ -1,5 +1,5 @@
 import { api, montarQuery } from "../api.js";
-import { barraEmpilhada, barras, colunas } from "../graficos.js";
+import { anel, barraEmpilhada, barras, cartaoIndicador, colunas, miniBarras, progresso } from "../graficos.js";
 import { botoesExportar, cabecalho, campoFiltro, executar, formatar, h, seletor, tabela } from "../ui.js";
 
 function inicioDoAno() {
@@ -41,71 +41,62 @@ export async function telaRelatorioCompras(area) {
 
     if (!dados) return;
 
-    const indicador = (rotulo, valor, alerta = false) =>
-      h("div", { class: `indicador ${alerta ? "alerta" : ""}` }, h("dt", {}, rotulo), h("dd", {}, valor));
 
     const maiorMes = Math.max(0, ...dados.por_mes.map((m) => m.valor_total));
     const maiorFornecedor = Math.max(0, ...dados.por_fornecedor.map((f) => f.valor_total));
 
     conteudo.replaceChildren(
       h(
-        "dl",
-        { class: "indicadores" },
-        indicador("Compras", formatar.numero(dados.total_compras)),
-        indicador("Valor comprado", formatar.moeda(dados.valor_total)),
-        indicador("Valor médio por compra", formatar.moeda(dados.ticket_medio)),
-        indicador("Frete pago", formatar.moeda(dados.frete_total)),
-        indicador(
-          "Entregas no prazo",
-          dados.percentual_no_prazo === null ? "—" : `${formatar.numero(dados.percentual_no_prazo)}%`
-        ),
-        indicador(
-          "Tempo médio de entrega",
-          dados.prazo_medio_entrega_dias === null
-            ? "—"
-            : `${formatar.numero(dados.prazo_medio_entrega_dias)} dias`
-        ),
-        indicador(
-          "Atrasadas sem entrega",
-          formatar.numero(dados.atrasadas_em_aberto),
-          dados.atrasadas_em_aberto > 0
-        )
-      ),
-      h(
         "div",
-        { class: "graficos" },
-        colunas({
-          titulo: "Valor comprado por mês",
-          itens: dados.por_mes.map((m) => ({ rotulo: nomeMes(m.mes), valor: m.valor_total })),
-          formatar: formatar.moeda,
-          vazio: "Nenhuma compra no período.",
+        { class: "cartoes-indicador" },
+        cartaoIndicador({
+          rotulo: "Valor comprado",
+          valor: formatar.moeda(dados.valor_total),
+          cor: "1",
+          detalhe: `${formatar.numero(dados.total_compras)} compra${dados.total_compras === 1 ? "" : "s"}, média de ${formatar.moeda(dados.ticket_medio)}`,
+          visual: miniBarras(
+            dados.por_mes.slice(-6).map((m) => ({ rotulo: nomeMes(m.mes), valor: m.valor_total })),
+            formatar.moeda
+          ),
         }),
-        h(
-          "div",
-          { class: "pilha-graficos" },
-          barraEmpilhada({
-            titulo: "Situação das entregas",
-            descricao: "Compras do período pela situação da entrega.",
-            partes: [
-              { nome: "No prazo", valor: dados.entregas_no_prazo, cor: "var(--grafico-1)" },
-              { nome: "Com atraso", valor: dados.entregas_atrasadas, cor: "var(--grafico-2)" },
-              {
-                nome: "Ainda não entregues",
-                valor: dados.compras_parciais + dados.compras_pendentes,
-                cor: "var(--grafico-3)",
-              },
+        cartaoIndicador({
+          rotulo: "Entregas no prazo",
+          valor: dados.percentual_no_prazo === null ? "—" : `${formatar.numero(dados.percentual_no_prazo)}%`,
+          cor: "3",
+          detalhe:
+            dados.prazo_medio_entrega_dias === null
+              ? "Nenhuma entrega completa no período"
+              : `Tempo médio de entrega: ${formatar.numero(dados.prazo_medio_entrega_dias)} dias`,
+          visual: anel(
+            [
+              { nome: "No prazo", valor: dados.entregas_no_prazo, cor: "var(--cor-3)" },
+              { nome: "Com atraso", valor: dados.entregas_atrasadas, cor: "var(--cor-2)" },
+              { nome: "A receber", valor: dados.compras_parciais + dados.compras_pendentes, cor: "var(--cor-4)" },
             ],
-            formatar: (valor) => `${formatar.numero(valor)} compra${valor === 1 ? "" : "s"}`,
-            vazio: "Nenhuma compra no período.",
-          }),
-          barras({
-            titulo: "Maiores fornecedores",
-            itens: dados.por_fornecedor.slice(0, 5).map((f) => ({ rotulo: f.fornecedor, valor: f.valor_total })),
-            formatar: formatar.moeda,
-            cor: "var(--grafico-1)",
-            vazio: "Nenhuma compra no período.",
-          })
-        )
+            String(dados.total_compras)
+          ),
+        }),
+        cartaoIndicador({
+          rotulo: "Frete pago",
+          valor: formatar.moeda(dados.frete_total),
+          cor: "6",
+          detalhe: "Parte do frete no valor comprado",
+          visual: progresso(dados.frete_total, dados.valor_total, "Parte do frete no valor comprado"),
+        }),
+        cartaoIndicador({
+          rotulo: "Atrasadas sem entrega",
+          valor: formatar.numero(dados.atrasadas_em_aberto),
+          cor: dados.atrasadas_em_aberto > 0 ? "alerta" : "4",
+          detalhe:
+            dados.atrasadas_em_aberto > 0
+              ? "Compras com previsão vencida e itens a receber"
+              : "Nenhuma compra atrasada",
+          visual: progresso(
+            dados.atrasadas_em_aberto,
+            dados.compras_parciais + dados.compras_pendentes,
+            "Parte das compras a receber que estão atrasadas"
+          ),
+        })
       ),
       h(
         "p",
@@ -128,7 +119,7 @@ export async function telaRelatorioCompras(area) {
               {
                 titulo: h("span", { class: "oculto-visualmente" }, "Proporção"),
                 classe: "coluna-barra",
-                valor: (m) => barra(m.valor_total, maiorMes, "var(--fibra-azul)"),
+                valor: (m) => barra(m.valor_total, maiorMes, "var(--cor-1)"),
               },
             ],
             dados.por_mes,
@@ -155,7 +146,7 @@ export async function telaRelatorioCompras(area) {
               {
                 titulo: h("span", { class: "oculto-visualmente" }, "Proporção"),
                 classe: "coluna-barra",
-                valor: (f) => barra(f.valor_total, maiorFornecedor, "var(--fibra-laranja)"),
+                valor: (f) => barra(f.valor_total, maiorFornecedor, "var(--cor-2)"),
               },
             ],
             dados.por_fornecedor,

@@ -28,7 +28,7 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Produtos e categorias, com busca, filtros (categoria, fornecedor, estoque baixo) e paginação
 - Entradas e saídas de estoque, com bloqueio de saída maior que o disponível
 - Histórico de movimentações com filtros por produto, tipo e período
-- Painel com indicadores e gráficos de valor por categoria e de entradas e saídas por mês
+- Painel com cartões de indicador coloridos (mini barras, anel e barra de progresso) e gráficos de valor por categoria e de entradas e saídas por mês
 
 **Compras**
 - Fornecedores (ativos e inativos) e formas de pagamento (à vista, dia específico, a prazo de 1X a 12X)
@@ -197,6 +197,7 @@ Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Forn
 - **Temas**: automático (segue o sistema), claro ou escuro, no menu da conta.
 - **Status**: cores do código de fibra óptica, sempre acompanhadas do nome do status.
 - **Gráficos**: feitos em HTML e CSS, com cores validadas para daltonismo nos dois temas.
+- **Cores por módulo**: Estoque em verde-água, Compras em laranja, Relatórios em violeta e Administração em azul, aplicadas nos títulos, quadros e totais.
 - **Detalhe da solicitação**: mostra as etapas, o próximo passo e quem é responsável por ele.
 - **Responsivo**: funciona no celular, com menu recolhível.
 
