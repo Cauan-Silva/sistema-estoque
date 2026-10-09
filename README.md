@@ -1,762 +1,54 @@
-# Sistema de Gestão de Estoque
+# Sistema de Gestão de Estoque e Compras
 
-API REST para gerenciamento de estoque, fornecedores e processos relacionados, desenvolvida com Python, FastAPI e PostgreSQL.
+Sistema web para controlar o estoque e todo o ciclo de compras: da solicitação de compra às cotações, aprovação, pedido e recebimento, com entrada automática dos materiais no estoque.
 
-O sistema permite gerenciar produtos e categorias, controlar entradas e saídas de estoque, consultar históricos, aplicar filtros, gerar relatórios e cadastrar fornecedores.
+O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um **frontend em HTML, CSS e JavaScript**, servido pela própria API. Tem autenticação com JWT, perfis de permissão, auditoria, exportação para Excel e PDF, consulta de preços de mercado, migrations com Alembic, Docker e integração contínua no GitHub Actions.
 
-O projeto também possui autenticação de usuários com JWT, senhas protegidas com bcrypt, rotas autenticadas, paginação, banco PostgreSQL separado para testes e integração contínua com GitHub Actions.
+## Sumário
+
+- [Funcionalidades](#funcionalidades)
+- [Fluxo de compras](#fluxo-de-compras)
+- [Tecnologias](#tecnologias)
+- [Como rodar](#como-rodar)
+- [Configuração (.env)](#configuração-env)
+- [Banco de dados e migrations](#banco-de-dados-e-migrations)
+- [Frontend](#frontend)
+- [Perfis e permissões](#perfis-e-permissões)
+- [Consulta de preços](#consulta-de-preços)
+- [Exportação](#exportação)
+- [Logs e auditoria](#logs-e-auditoria)
+- [API](#api)
+- [Regras de negócio](#regras-de-negócio)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Testes e integração contínua](#testes-e-integração-contínua)
 
 ## Funcionalidades
 
-### Estoque
-
-- Cadastro, consulta, atualização e exclusão de produtos
-- Cadastro e gerenciamento de categorias
-- Relacionamento entre produtos e categorias
-- Busca de produtos por nome
-- Filtro de produtos por categoria
-- Controle de estoque baixo
-- Limite configurável para estoque baixo
-- Paginação de produtos
-- Registro de entradas de estoque
-- Registro de saídas de estoque
-- Atualização automática da quantidade disponível
-- Bloqueio de saídas com estoque insuficiente
-- Histórico de movimentações
-- Filtro de movimentações por produto
-- Filtro de movimentações por tipo
-- Filtro de movimentações por período
-- Paginação de movimentações
-- Validação de intervalos de datas
-
-### Relatórios
-
-- Resumo geral do estoque
-- Cálculo do valor total armazenado
-- Ranking de produtos por valor em estoque
-- Indicadores de entradas e saídas
-
-### Usuários e autenticação
-
-- Cadastro de usuários
-- Normalização de e-mail
-- Proteção de senhas com bcrypt
-- Login com e-mail e senha
-- Autenticação utilizando JWT
-- Tokens de acesso com tempo de expiração
-- Autenticação via Bearer Token
-- Identificação do usuário pelo ID armazenado no token
-- Endpoint para consultar o usuário autenticado
-- Bloqueio de acesso com token inválido
-- Suporte a usuários ativos e inativos
-- Todas as rotas de negócio protegidas por autenticação
-
-### Fornecedores
-
-- Cadastro de fornecedores
-- Consulta de fornecedor por ID
-- Listagem de fornecedores
-- Dados de contato, telefone e e-mail
-- CPF/CNPJ do fornecedor
-- Site do fornecedor
-- Atualização de fornecedores
-- Controle de fornecedor ativo/inativo
-- Filtro de fornecedores por status
-- Vínculo opcional entre produto e fornecedor
-- Filtro de produtos por fornecedor
-- API de fornecedores protegida por JWT
-
-### Solicitações de compra
-
-- Criação de solicitações com um ou mais produtos
-- Solicitante identificado pelo usuário autenticado
-- Edição de observação e itens enquanto a solicitação está aberta
-- Cancelamento de solicitações
-- Filtro por status e pelas solicitações do próprio usuário
-- Paginação de solicitações
-
-### Cotações
-
-- Registro de cotações por fornecedor para cada solicitação
-- Preço unitário por produto, frete, prazo de entrega, validade e observação
-- Cálculo automático de subtotal por item, valor dos itens e valor total
-- Uma cotação por fornecedor em cada solicitação
-- Atualização e exclusão de cotações
-- Comparação de cotações por valor total, prazo, frete e preço por produto
-
-### Aprovação e compras
-
-- Aprovação de uma cotação completa e dentro da validade
-- Reprovação de solicitações com justificativa obrigatória
-- Registro de quem decidiu, quando e por quê
-- Registro da compra a partir da solicitação aprovada
-- Cópia dos valores aprovados no registro da compra
-- Previsão de entrega calculada pelo prazo da cotação
-- Consulta de compras com filtro por fornecedor e paginação
-
-### Recebimento e relatórios de compras
-
-- Recebimento total ou parcial dos materiais comprados
-- Entrada automática no estoque a cada recebimento
-- Situação da entrega por compra: pendente, parcial ou completa
-- Indicação de entrega no prazo ou com atraso
-- Relatório de compras por período, fornecedor, produto e mês
-
-### Formas de pagamento
-
-- Cadastro de formas de pagamento com código, título, tipo, parcelas e intervalo
-- Lista padrão: À vista, Dia específico e A prazo de 1X a 12X
-- Busca, ordenação por código, título ou tipo, e paginação
-- Seleção da forma de pagamento na cotação, exibida na comparação e copiada para a compra
-
-### Permissões, auditoria, logs e exportação
-
-- Perfis de usuário: Administrador, Comprador, Aprovador, Almoxarife e Consulta
-- Ninguém aprova ou reprova a própria solicitação
-- Administração de usuários (perfil e ativação) pelo administrador
-- Auditoria de todas as criações, alterações e exclusões
-- Logs da aplicação em console e arquivo, com código de requisição
-- Exportação para Excel e PDF de produtos, movimentações, fornecedores, compras e relatório de compras
-
-### Qualidade e infraestrutura
-
-- Testes automatizados com Pytest
-- Banco PostgreSQL separado para testes
-- Integração contínua com GitHub Actions
-- Validação de dados com Pydantic
-- Persistência com PostgreSQL
-- Documentação automática com Swagger
-
-## Tecnologias
-
-- Python
-- FastAPI
-- PostgreSQL
-- Psycopg2
-- Pydantic
-- Uvicorn
-- Pytest
-- HTTPX
-- bcrypt
-- python-jose
-- JWT
-- Git
-- GitHub
-- GitHub Actions
-
-## Estrutura do projeto
-
-```text
-sistema-estoque/
-│
-├── .github/
-│   └── workflows/
-│       └── tests.yml
-│
-├── frontend/
-│   ├── css/
-│   │   └── app.css
-│   ├── js/
-│   │   ├── telas/
-│   │   ├── api.js
-│   │   ├── app.js
-│   │   └── ui.js
-│   └── index.html
-│
-├── backend/
-│   ├── routes/
-│   │   ├── categorias.py
-│   │   ├── compras.py
-│   │   ├── cotacoes.py
-│   │   ├── fornecedores.py
-│   │   ├── movimentacoes.py
-│   │   ├── produtos.py
-│   │   ├── relatorios.py
-│   │   ├── solicitacoes_compra.py
-│   │   └── usuarios.py
-│   │
-│   ├── schemas/
-│   │   ├── categoria.py
-│   │   ├── compra.py
-│   │   ├── cotacao.py
-│   │   ├── fornecedor.py
-│   │   ├── movimentacao.py
-│   │   ├── produto.py
-│   │   ├── relatorio.py
-│   │   ├── solicitacao_compra.py
-│   │   └── usuario.py
-│   │
-│   ├── tests/
-│   │   ├── apoio_compras.py
-│   │   ├── conftest.py
-│   │   ├── test_autenticacao.py
-│   │   ├── test_aprovacao.py
-│   │   ├── test_autorizacao.py
-│   │   ├── test_categorias.py
-│   │   ├── test_comparacao_cotacoes.py
-│   │   ├── test_compras.py
-│   │   ├── test_cotacoes.py
-│   │   ├── test_fornecedores.py
-│   │   ├── test_health.py
-│   │   ├── test_movimentacoes.py
-│   │   ├── test_produtos.py
-│   │   ├── test_relatorios.py
-│   │   ├── test_solicitacoes_compra.py
-│   │   └── test_usuarios.py
-│   │
-│   ├── autenticacao.py
-│   ├── database.py
-│   ├── main.py
-│   ├── produto.py
-│   ├── repositorio.py
-│   ├── repositorio_aprovacao.py
-│   ├── repositorio_categoria.py
-│   ├── repositorio_compra.py
-│   ├── repositorio_cotacao.py
-│   ├── repositorio_fornecedor.py
-│   ├── repositorio_movimentacao.py
-│   ├── repositorio_relatorio.py
-│   ├── repositorio_solicitacao_compra.py
-│   └── repositorio_usuario.py
-│
-├── .env
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
-
-## Configuração
-
-Clone o repositório:
-
-```bash
-git clone https://github.com/Cauan-Silva/sistema-estoque.git
-```
-
-Entre na pasta:
-
-```bash
-cd sistema-estoque
-```
-
-Crie um ambiente virtual:
-
-```bash
-python -m venv .venv
-```
-
-Ative o ambiente no Windows:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Instale as dependências:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Banco de dados
-
-O projeto utiliza PostgreSQL.
-
-Crie o banco principal:
-
-```text
-sistema_estoque
-```
-
-Crie também um banco separado para os testes:
-
-```text
-sistema_estoque_test
-```
-
-Crie um arquivo `.env` na raiz do projeto:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=sistema_estoque
-DB_USER=postgres
-DB_PASSWORD=sua_senha
-
-JWT_SECRET_KEY=sua_chave_secreta
-```
-
-Uma chave JWT segura pode ser gerada com:
-
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-O arquivo `.env` contém informações sensíveis e não deve ser enviado ao GitHub.
-
-## Executando a API
-
-```bash
-python -m uvicorn backend.main:app --reload
-```
-
-API:
-
-```text
-http://127.0.0.1:8000
-```
-
-Swagger:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Frontend:
-
-```text
-http://127.0.0.1:8000/app/
-```
-
-## Frontend
-
-O frontend fica na pasta `frontend/` e é servido pela própria API em `/app/`. Ele usa apenas HTML, CSS e JavaScript, sem etapa de build e sem dependências de npm.
-
-Telas disponíveis:
-
-- Entrar e criar conta
-- Painel com valor em estoque, gráficos de valor por categoria e de entradas e saídas por mês, estoque baixo e compras em andamento
-- Produtos, com filtros e registro rápido de entrada e saída
-- Categorias
-- Movimentações, com filtros por produto, tipo e período
-- Fornecedores, com edição e ativação/inativação
-- Solicitações de compra
-- Detalhe da solicitação: próximo passo, itens, cotações, comparação, aprovação, reprovação, registro da compra e recebimento
-- Compras, com as solicitações aguardando compra e a situação de cada entrega
-- Relatório de compras, com gráficos de valor por mês, situação das entregas e maiores fornecedores
-- Formas de pagamento, com a janela de seleção usada nas cotações
-- Usuários e Auditoria, visíveis só para administradores
-- Botões de exportação para Excel e PDF em Produtos, Movimentações, Fornecedores, Compras e Relatório de compras
-
-O tema pode ser automático (segue o sistema operacional), claro ou escuro. A escolha fica no menu lateral e na tela de entrada.
-
-O token de acesso fica salvo no navegador. Quando ele expira, o frontend volta para a tela de entrada.
-
-Os status usam o código de cores da fibra óptica: azul para aberta, laranja para em cotação, verde para aprovada, marrom para comprada, água para recebida, ardósia para cancelada e vermelho para reprovada.
-
-## Autenticação
-
-Todas as rotas da API exigem um token JWT, exceto:
-
-```text
-GET  /
-GET  /health
-POST /usuarios
-POST /usuarios/login
-POST /usuarios/token
-```
-
-Fluxo de uso:
-
-1. Cadastre um usuário em `POST /usuarios`
-2. Faça login em `POST /usuarios/login` para receber o token
-3. Envie o token no cabeçalho de cada requisição:
-
-```text
-Authorization: Bearer <token>
-```
-
-No Swagger (`/docs`), clique em **Authorize** e informe o e-mail no campo `username` e a senha no campo `password`. O Swagger obtém o token em `POST /usuarios/token` e passa a enviá-lo em todas as requisições.
-
-Requisições sem token ou com token inválido retornam `401`. Usuários inativos recebem `403`.
-
-## Endpoints
-
-### Produtos
-
-```text
-GET    /produtos
-GET    /produtos/{id_produto}
-POST   /produtos
-PUT    /produtos/{id_produto}
-DELETE /produtos/{id_produto}
-```
-
-### Categorias
-
-```text
-GET    /categorias
-GET    /categorias/{id_categoria}
-POST   /categorias
-PUT    /categorias/{id_categoria}
-DELETE /categorias/{id_categoria}
-```
-
-### Movimentações
-
-```text
-GET  /movimentacoes
-GET  /movimentacoes/{id_movimentacao}
-POST /movimentacoes
-```
-
-### Relatórios
-
-```text
-GET /relatorios/resumo
-GET /relatorios/maior-valor
-```
-
-### Usuários
-
-```text
-POST /usuarios
-POST /usuarios/login
-POST /usuarios/token
-GET  /usuarios/me
-```
-
-`POST /usuarios/login` recebe JSON (`email` e `senha`). `POST /usuarios/token` recebe formulário (`username` e `password`) e é o endpoint usado pelo Swagger.
-
-O endpoint `/usuarios/me` exige autenticação.
-
-### Fornecedores
-
-```text
-POST  /fornecedores
-GET   /fornecedores
-GET   /fornecedores/{fornecedor_id}
-PUT   /fornecedores/{fornecedor_id}
-PATCH /fornecedores/{fornecedor_id}/status
-```
-
-As rotas de fornecedores exigem autenticação com JWT.
-
-### Solicitações de compra
-
-```text
-POST  /solicitacoes-compra
-GET   /solicitacoes-compra
-GET   /solicitacoes-compra/{solicitacao_id}
-PUT   /solicitacoes-compra/{solicitacao_id}
-PATCH /solicitacoes-compra/{solicitacao_id}/cancelar
-```
-
-### Cotações
-
-```text
-POST   /solicitacoes-compra/{solicitacao_id}/cotacoes
-GET    /solicitacoes-compra/{solicitacao_id}/cotacoes
-GET    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
-PUT    /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
-DELETE /solicitacoes-compra/{solicitacao_id}/cotacoes/{cotacao_id}
-GET    /solicitacoes-compra/{solicitacao_id}/cotacoes/comparacao
-```
-
-### Aprovação
-
-```text
-PATCH /solicitacoes-compra/{solicitacao_id}/aprovar
-PATCH /solicitacoes-compra/{solicitacao_id}/reprovar
-```
-
-### Compras
-
-```text
-POST /solicitacoes-compra/{solicitacao_id}/compra
-GET  /solicitacoes-compra/{solicitacao_id}/compra
-GET  /compras
-GET  /compras/{compra_id}
-```
-
-### Recebimentos
-
-```text
-POST /solicitacoes-compra/{solicitacao_id}/compra/recebimentos
-GET  /solicitacoes-compra/{solicitacao_id}/compra/recebimentos
-```
-
-### Relatório de compras
-
-```text
-GET /relatorios/compras
-```
-
-### Formas de pagamento
-
-```text
-GET   /formas-pagamento?busca=prazo&tipo=A_PRAZO&ativo=true&ordem=codigo&decrescente=false&pagina=1&tamanho=10
-GET   /formas-pagamento/{forma_id}
-POST  /formas-pagamento
-PUT   /formas-pagamento/{forma_id}
-PATCH /formas-pagamento/{forma_id}/status
-```
-
-A listagem devolve `total`, `pagina`, `tamanho` e `itens`. A cotação aceita `forma_pagamento_id` (opcional, precisa estar ativa) e a compra guarda o código e o título da forma aprovada.
-
-## Produtos
-
-Exemplo de cadastro:
-
-```json
-{
-  "nome": "Switch Intelbras 8 Portas",
-  "categoria_id": 1,
-  "quantidade": 10,
-  "preco": 189.90,
-  "fornecedor_id": 1
-}
-```
-
-O campo `fornecedor_id` é opcional. Um produto não pode ser vinculado a um fornecedor inexistente (`404`) ou inativo (`400`). Ao editar um produto, é possível manter o fornecedor atual mesmo que ele tenha sido inativado.
-
-Busca por nome:
-
-```text
-GET /produtos?busca=Intelbras
-```
-
-Filtro por categoria:
-
-```text
-GET /produtos?categoria_id=1
-```
-
-Filtro por fornecedor:
-
-```text
-GET /produtos?fornecedor_id=1
-```
-
-Estoque baixo:
-
-```text
-GET /produtos?estoque_baixo=true&limite_estoque=5
-```
-
-Paginação:
-
-```text
-GET /produtos?pagina=1&tamanho=10
-```
-
-Os filtros podem ser combinados com os parâmetros de paginação.
-
-## Movimentações de estoque
-
-Entrada:
-
-```json
-{
-  "produto_id": 1,
-  "tipo": "ENTRADA",
-  "quantidade": 10
-}
-```
-
-Saída:
-
-```json
-{
-  "produto_id": 1,
-  "tipo": "SAIDA",
-  "quantidade": 3
-}
-```
-
-O sistema impede uma saída maior que o estoque disponível.
-
-A alteração do estoque e o registro da movimentação são realizados na mesma transação.
-
-## Filtros de movimentações
-
-Por produto:
-
-```text
-GET /movimentacoes?produto_id=1
-```
-
-Por tipo:
-
-```text
-GET /movimentacoes?tipo=ENTRADA
-```
-
-Por período:
-
-```text
-GET /movimentacoes?data_inicio=2026-09-01T00:00:00&data_fim=2026-09-01T23:59:59
-```
-
-Paginação:
-
-```text
-GET /movimentacoes?pagina=1&tamanho=10
-```
-
-Os filtros podem ser combinados com a paginação.
-
-## Relatórios
-
-Resumo geral:
-
-```text
-GET /relatorios/resumo
-```
-
-Produtos com maior valor em estoque:
-
-```text
-GET /relatorios/maior-valor
-```
-
-O valor é calculado por:
-
-```text
-valor em estoque = quantidade × preço
-```
-
-## Autenticação
-
-### Cadastro de usuário
-
-```text
-POST /usuarios
-```
-
-Exemplo:
-
-```json
-{
-  "nome": "Usuario Teste",
-  "email": "usuario@teste.com",
-  "senha": "senha123"
-}
-```
-
-As senhas não são armazenadas em texto puro. O sistema utiliza bcrypt para gerar o hash antes da persistência.
-
-### Login
-
-```text
-POST /usuarios/login
-```
-
-Exemplo:
-
-```json
-{
-  "email": "usuario@teste.com",
-  "senha": "senha123"
-}
-```
-
-Em caso de sucesso, a API retorna um token JWT:
-
-```json
-{
-  "access_token": "token_jwt",
-  "token_type": "bearer"
-}
-```
-
-O token possui tempo de expiração e utiliza o ID do usuário no campo `sub`.
-
-### Usuário autenticado
-
-```text
-GET /usuarios/me
-```
-
-A requisição deve utilizar:
-
-```text
-Authorization: Bearer <access_token>
-```
-
-Tokens inválidos ou expirados são rejeitados pela API.
-
-## Fornecedores
-
-O módulo de fornecedores é a primeira etapa da expansão do sistema para gerenciamento de compras e cotações.
-
-Exemplo de fornecedor:
-
-```json
-{
-  "nome": "Fornecedor Teste",
-  "cpf_cnpj": "12345678000199",
-  "contato": "João",
-  "telefone": "48999999999",
-  "email": "contato@fornecedor.com",
-  "site": "https://fornecedor.com"
-}
-```
-
-Rotas disponíveis:
-
-```text
-POST  /fornecedores
-GET   /fornecedores
-GET   /fornecedores/{fornecedor_id}
-PUT   /fornecedores/{fornecedor_id}
-PATCH /fornecedores/{fornecedor_id}/status
-```
-
-Todas essas rotas exigem autenticação.
-
-Filtro por status:
-
-```text
-GET /fornecedores?ativo=true
-```
-
-Inativar ou reativar um fornecedor:
-
-```json
-{
-  "ativo": false
-}
-```
-
-Fornecedores não são excluídos, apenas inativados, para preservar o histórico dos produtos vinculados.
-
-## Solicitações de compra
-
-Uma solicitação de compra registra quais produtos precisam ser comprados e em que quantidade. O solicitante é o usuário autenticado que criou a solicitação.
-
-Exemplo:
-
-```json
-{
-  "observacao": "Reposição mensal",
-  "itens": [
-    { "produto_id": 1, "quantidade": 20 },
-    { "produto_id": 2, "quantidade": 5 }
-  ]
-}
-```
-
-Filtros:
-
-```text
-GET /solicitacoes-compra?status=ABERTA
-GET /solicitacoes-compra?apenas_minhas=true
-GET /solicitacoes-compra?pagina=1&tamanho=10
-```
-
-Status:
-
-| Status | Uso |
-|---|---|
-| `ABERTA` | Solicitação criada, pode ser editada ou cancelada |
-| `EM_COTACAO` | Possui pelo menos uma cotação; os itens ficam congelados, mas ainda pode ser cancelada |
-| `APROVADA` | Uma cotação foi aprovada; aguarda o registro da compra e ainda pode ser cancelada |
-| `REPROVADA` | Solicitação reprovada, não pode mais ser alterada |
-| `COMPRADA` | Compra registrada, aguardando a entrega total dos materiais |
-| `CANCELADA` | Solicitação cancelada, não pode mais ser alterada |
-| `RECEBIDA` | Todos os itens da compra foram recebidos e estão no estoque |
-
-Fluxo completo:
+**Estoque**
+- Produtos e categorias, com busca, filtros (categoria, fornecedor, estoque baixo) e paginação
+- Entradas e saídas de estoque, com bloqueio de saída maior que o disponível
+- Histórico de movimentações com filtros por produto, tipo e período
+- Painel com indicadores e gráficos de valor por categoria e de entradas e saídas por mês
+
+**Compras**
+- Fornecedores (ativos e inativos) e formas de pagamento (à vista, dia específico, a prazo de 1X a 12X)
+- Solicitações de compra com vários itens
+- Cotações por fornecedor, com preços por item, frete, prazo, validade e forma de pagamento
+- Comparação de cotações: menor total, menor prazo, menor frete e melhor preço de cada produto
+- Aprovação e reprovação com justificativa, sem permitir aprovar a própria solicitação
+- Registro da compra com cópia dos valores aprovados
+- Recebimento total ou parcial, com **entrada automática no estoque**
+- Relatório de compras por período, fornecedor, produto e mês, com pontualidade das entregas
+- Consulta de preços: histórico do que já foi pago e cotado, e ofertas do Mercado Livre
+
+**Administração e qualidade**
+- Login com JWT, senhas com bcrypt e cinco perfis de permissão
+- Administração de usuários e auditoria de todas as alterações
+- Logs em arquivo com código de requisição para suporte
+- Exportação para Excel e PDF
+- Migrations com Alembic, Docker Compose e CI com testes e verificação do Docker
+
+## Fluxo de compras
 
 ```text
 ABERTA → EM_COTACAO → APROVADA → COMPRADA → RECEBIDA
@@ -766,154 +58,153 @@ ABERTA, EM_COTACAO ou APROVADA  → CANCELADA
 EM_COTACAO (sem cotações)       → ABERTA
 ```
 
-## Cotações
+| Status | Significado |
+|---|---|
+| `ABERTA` | Solicitação criada; itens podem ser editados |
+| `EM_COTACAO` | Recebeu pelo menos uma cotação; itens congelados |
+| `APROVADA` | Uma cotação foi aprovada; aguarda o registro da compra |
+| `COMPRADA` | Compra registrada; aguarda a entrega |
+| `RECEBIDA` | Todos os itens chegaram e entraram no estoque |
+| `REPROVADA` | Encerrada por um aprovador, com justificativa |
+| `CANCELADA` | Encerrada antes da compra |
 
-Cada fornecedor pode registrar uma cotação para uma solicitação de compra, informando o preço unitário dos produtos solicitados, o frete e o prazo de entrega.
+## Tecnologias
 
-Exemplo:
+| Camada | Tecnologias |
+|---|---|
+| API | Python, FastAPI, Pydantic, Uvicorn |
+| Banco | PostgreSQL, Psycopg2, Alembic, SQLAlchemy (só para as migrations) |
+| Segurança | JWT (python-jose), bcrypt |
+| Arquivos | openpyxl (Excel), fpdf2 (PDF) |
+| Integração | HTTPX (Mercado Livre) |
+| Frontend | HTML, CSS e JavaScript (módulos ES), sem build |
+| Infra | Docker, Docker Compose, GitHub Actions |
+| Testes | Pytest, TestClient do FastAPI |
 
-```json
-{
-  "fornecedor_id": 1,
-  "frete": 15.50,
-  "prazo_entrega_dias": 7,
-  "validade": "2026-12-31",
-  "observacao": "Pagamento em 30 dias",
-  "itens": [
-    { "produto_id": 1, "preco_unitario": 2.35 },
-    { "produto_id": 2, "preco_unitario": 1.10 }
-  ]
-}
+## Como rodar
+
+### Com Docker (recomendado)
+
+Precisa apenas do [Docker](https://docs.docker.com/get-docker/).
+
+```bash
+git clone https://github.com/Cauan-Silva/sistema-estoque.git
+cd sistema-estoque
+cp .env.example .env
 ```
 
-A resposta inclui, para cada item, a quantidade solicitada e o subtotal, além de `valor_itens` e `valor_total`:
+Edite o `.env` e defina pelo menos `DB_PASSWORD` e `JWT_SECRET_KEY`. Depois:
 
-```text
-subtotal    = quantidade solicitada × preço unitário
-valor_total = soma dos subtotais + frete
+```bash
+docker compose up -d --build
 ```
 
-Fluxo:
+Acesse **http://localhost:8000/app/**. O primeiro usuário cadastrado vira administrador.
 
-- A primeira cotação muda a solicitação de `ABERTA` para `EM_COTACAO`.
-- Excluir a última cotação devolve a solicitação para `ABERTA`.
-- Cotações só podem ser registradas, editadas ou excluídas enquanto a solicitação está `ABERTA` ou `EM_COTACAO`.
+Comandos úteis:
 
-## Comparação de cotações
-
-```text
-GET /solicitacoes-compra/{solicitacao_id}/cotacoes/comparacao
+```bash
+docker compose logs -f api      # acompanhar os logs
+docker compose down             # parar (os dados continuam no volume)
+docker compose up -d --build    # atualizar depois de um git pull
 ```
 
-A resposta traz:
+### Sem Docker
 
-- `cotacoes`: todas as cotações, primeiro as elegíveis, ordenadas por valor total e depois por prazo;
-- `menor_valor_total`, `menor_prazo` e `menor_frete`: destaques entre as cotações elegíveis;
-- `por_produto`: o melhor preço unitário de cada produto entre as cotações dentro da validade.
+Precisa de Python 3.12 ou mais novo e PostgreSQL.
 
-Uma cotação é **elegível** quando cobre todos os itens da solicitação e não está vencida. Cada cotação indica `cobre_todos_itens`, `vencida` e `elegivel`.
-
-## Aprovação
-
-Aprovar:
-
-```json
-{
-  "cotacao_id": 2,
-  "justificativa": "Menor valor total"
-}
+```bash
+git clone https://github.com/Cauan-Silva/sistema-estoque.git
+cd sistema-estoque
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1        # Windows (no Linux/macOS: source .venv/bin/activate)
+pip install -r requirements.txt
+copy .env.example .env              # no Linux/macOS: cp .env.example .env
 ```
 
-Reprovar:
+Crie o banco `sistema_estoque` no PostgreSQL, preencha o `.env` e rode:
 
-```json
-{
-  "justificativa": "Valores acima do orçamento"
-}
+```bash
+python -m uvicorn backend.main:app --reload
 ```
 
-- Só solicitações `EM_COTACAO` podem ser aprovadas.
-- A cotação aprovada precisa cobrir todos os itens e estar dentro da validade.
-- Solicitações `ABERTA` ou `EM_COTACAO` podem ser reprovadas, sempre com justificativa.
-- A resposta registra `cotacao_aprovada_id`, `decisao_por`, `data_decisao` e `justificativa_decisao`.
+As tabelas são criadas e atualizadas automaticamente na inicialização (veja [migrations](#banco-de-dados-e-migrations)).
 
-## Compras
+| Endereço | O que é |
+|---|---|
+| http://127.0.0.1:8000/app/ | Sistema (frontend) |
+| http://127.0.0.1:8000/docs | Documentação interativa da API (Swagger) |
+| http://127.0.0.1:8000/health | Verificação de funcionamento |
 
-Registrar a compra de uma solicitação aprovada:
+### Acesso por outros computadores da rede
 
-```json
-{
-  "numero_pedido": "PED-001",
-  "data_compra": "2026-10-01",
-  "previsao_entrega": "2026-10-11",
-  "observacao": "Pago via boleto"
-}
+No computador que roda o sistema:
+
+```powershell
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-Todos os campos são opcionais:
+No Windows, libere a porta (PowerShell como administrador):
 
-- `data_compra` usa a data atual quando não é informada;
-- `previsao_entrega` usa a data da compra somada ao prazo da cotação aprovada.
-
-A compra guarda uma cópia do fornecedor, dos itens, dos preços, do frete e do valor total da cotação aprovada. A solicitação passa para `COMPRADA`.
-
-Consultas:
-
-```text
-GET /compras?fornecedor_id=1&situacao_recebimento=PENDENTE&data_inicio=2026-10-01&data_fim=2026-10-31&pagina=1&tamanho=10
-GET /compras/{compra_id}
-GET /solicitacoes-compra/{solicitacao_id}/compra
+```powershell
+New-NetFirewallRule -DisplayName "Sistema Estoque" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
 ```
 
-## Recebimento de materiais
+Nos outros computadores, abra `http://IP-DO-SERVIDOR:8000/app/`. Com Docker, a porta já fica disponível na rede.
 
-Quando os materiais chegam, registre o recebimento da compra:
+## Configuração (.env)
 
-```json
-{
-  "data_recebimento": "2026-10-05",
-  "nota_fiscal": "NF-123",
-  "observacao": "Caixa 2 com avaria leve",
-  "itens": [
-    { "produto_id": 1, "quantidade": 6 }
-  ]
-}
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Sim | Conexão com o PostgreSQL |
+| `JWT_SECRET_KEY` | Sim | Chave dos tokens de login. Gere com `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `LOG_LEVEL` | Não | `DEBUG`, `INFO` (padrão), `WARNING` ou `ERROR` |
+| `LOG_DIR` | Não | Pasta dos arquivos de log (padrão: `logs`) |
+| `API_PORT` | Não | Porta da API no Docker (padrão: 8000) |
+| `MERCADO_LIVRE_CLIENT_ID`, `MERCADO_LIVRE_CLIENT_SECRET`, `MERCADO_LIVRE_REDIRECT_URI` | Não | Consulta de preços no Mercado Livre |
+
+O `.env` contém senhas e não vai para o GitHub. O modelo com todas as variáveis está em `.env.example`.
+
+## Banco de dados e migrations
+
+O esquema do banco é controlado pelo **Alembic**, na pasta `migrations/`. A API aplica as migrations pendentes sempre que inicia, então normalmente não é preciso rodar nada à mão.
+
+| Migration | Conteúdo |
+|---|---|
+| `0001_esquema_inicial` | Todas as tabelas do sistema |
+| `0002_credenciais_externas` | Tokens das APIs de preço |
+
+Bancos criados antes do Alembic são adotados sem perda de dados: a migração inicial só cria o que estiver faltando.
+
+Comandos úteis (com o ambiente virtual ativo):
+
+```bash
+alembic current                          # versão atual do banco
+alembic history                          # lista de migrations
+alembic upgrade head                     # aplicar manualmente
+alembic revision -m "descricao curta"     # criar uma migration nova
 ```
 
-- Sem `itens`, o recebimento considera tudo o que ainda está pendente.
-- Uma compra pode ter vários recebimentos, para entregas parciais.
-- A quantidade recebida não pode passar da quantidade pendente.
-- `data_recebimento` usa a data atual quando não é informada e não pode ser anterior à data da compra.
+Para mudar o banco, crie uma migration nova e escreva as alterações em `upgrade()` e `downgrade()`. Nunca altere uma migration que já foi aplicada em produção.
 
-Cada recebimento **entra no estoque automaticamente**: na mesma transação, a quantidade de cada produto aumenta e é criada uma movimentação de `ENTRADA` com o campo `recebimento_id`.
+## Frontend
 
-A compra passa a mostrar:
+O frontend fica em `frontend/` e é servido pela API em `/app/`. Não há etapa de build nem dependências de npm. O servidor envia os arquivos com `Cache-Control: no-cache`, então depois de uma atualização o navegador carrega a versão nova.
 
-- `situacao_recebimento`: `PENDENTE`, `PARCIAL` ou `COMPLETO`;
-- `quantidade_recebida` e `quantidade_pendente` de cada item;
-- `ultimo_recebimento` e `entregue_no_prazo`, comparando a última entrega com a previsão.
+Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Fornecedores, Formas de pagamento, Solicitações, Detalhe da solicitação, Compras, Relatório de compras, Usuários e Auditoria.
 
-Quando tudo é recebido, a solicitação passa para `RECEBIDA`.
-
-## Relatório de compras
-
-```text
-GET /relatorios/compras?data_inicio=2026-01-01&data_fim=2026-12-31&fornecedor_id=1
-```
-
-Todos os filtros são opcionais e o período considera a data da compra. A resposta traz:
-
-- total de compras, valor comprado, valor dos itens, frete e valor médio por compra;
-- quantidade de entregas completas, parciais e pendentes;
-- entregas no prazo e com atraso, percentual no prazo e tempo médio de entrega em dias;
-- compras com previsão vencida e entrega ainda incompleta;
-- resumos por fornecedor, por produto (com preço médio, menor e maior) e por mês.
+- **Visual**: céu ao entardecer com serras em camadas no topo de cada tela, títulos em *Young Serif* e textos em *Instrument Sans*.
+- **Temas**: automático (segue o sistema), claro ou escuro, no menu da conta.
+- **Status**: cores do código de fibra óptica, sempre acompanhadas do nome do status.
+- **Gráficos**: feitos em HTML e CSS, com cores validadas para daltonismo nos dois temas.
+- **Detalhe da solicitação**: mostra as etapas, o próximo passo e quem é responsável por ele.
+- **Responsivo**: funciona no celular, com menu recolhível.
 
 ## Perfis e permissões
 
 | Ação | Administrador | Comprador | Aprovador | Almoxarife | Consulta |
 |---|:-:|:-:|:-:|:-:|:-:|
-| Ver todas as telas e exportar | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ver todas as telas, consultar preços e exportar | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Produtos, categorias e movimentações | ✓ | | | ✓ | |
 | Fornecedores e formas de pagamento | ✓ | ✓ | | | |
 | Criar, editar e cancelar solicitações | ✓ | ✓ | | ✓ | |
@@ -922,184 +213,195 @@ Todos os filtros são opcionais e o período considera a data da compra. A respo
 | Registrar recebimento | ✓ | | | ✓ | |
 | Gerenciar usuários e ver a auditoria | ✓ | | | | |
 
-- O primeiro usuário de um banco novo é **Administrador**; os seguintes entram como **Consulta**.
-- Na atualização, os usuários que já existiam passaram a ser **Administrador**.
-- Ninguém pode aprovar ou reprovar uma solicitação criada por si.
+- O primeiro usuário de um banco novo é Administrador; os seguintes entram como Consulta.
+- Ninguém aprova ou reprova uma solicitação criada por si.
 - Um administrador não pode remover o próprio acesso de administrador.
-- Ações sem permissão retornam `403`. No frontend, os botões correspondentes não aparecem.
+- Sem permissão, a API responde `403` e o frontend esconde o botão.
+
+## Consulta de preços
+
+O botão **Preços** de cada produto mostra:
+
+- **Histórico interno**: último preço pago, média, menor e maior, últimas compras e últimas cotações. Funciona sempre.
+- **Preços de mercado**: ofertas do Mercado Livre, com menor preço, mediana e maior. É opcional.
+
+O formulário de cotação também mostra o último preço pago e a média ao lado de cada item.
+
+### Ativar o Mercado Livre
+
+1. Crie um aplicativo em [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br). Cadastre um endereço de retorno (*redirect URI*) com `https`, por exemplo `https://www.google.com.br`.
+2. Preencha no `.env`: `MERCADO_LIVRE_CLIENT_ID`, `MERCADO_LIVRE_CLIENT_SECRET` e `MERCADO_LIVRE_REDIRECT_URI`.
+3. Rode a autorização uma vez:
+
+   ```bash
+   python -m backend.precos.autorizar_mercado_livre
+   # com Docker:
+   docker compose exec api python -m backend.precos.autorizar_mercado_livre
+   ```
+
+   Abra o endereço que aparecer, autorize o aplicativo e cole o endereço de retorno (o que tem `?code=`).
+
+O token do Mercado Livre expira em poucas horas. O sistema renova sozinho e guarda o token novo no banco, na tabela `credenciais_externas`. Se a autorização for revogada, a tela de preços avisa para rodar o passo 3 de novo. Para um teste rápido sem OAuth, também é possível colocar um token pronto em `MERCADO_LIVRE_TOKEN`, mas ele para de funcionar quando expira.
+
+### Adicionar outra fonte de preços
+
+As fontes ficam em `backend/precos/`. Crie uma classe que herde de `FontePreco`, com `nome`, `configurada()` e `buscar(termo, limite)` devolvendo um `ResultadoFonte`, e acrescente uma instância à lista `FONTES` em `backend/precos/servico.py`. A tela de preços passa a mostrá-la automaticamente.
+
+## Exportação
+
+Os botões **Excel** e **PDF** ficam no topo de Produtos, Movimentações, Fornecedores, Compras e Relatório de compras, e exportam exatamente o que está filtrado.
+
+- **Excel**: cabeçalho formatado, filtros nas colunas, formatos de moeda e data e linha de totais. O relatório de compras sai com uma aba por resumo.
+- **PDF**: horizontal, com título, período, data de geração e número de páginas.
 
 ```text
-GET   /usuarios
-PATCH /usuarios/{usuario_id}
-```
-
-```json
-{ "perfil": "COMPRADOR", "ativo": true }
+GET /exportacoes/{produtos|movimentacoes|fornecedores|compras|relatorio-compras}?formato=xlsx|pdf
 ```
 
 ## Logs e auditoria
 
-Os logs vão para o console e para `logs/app.log` (até 5 arquivos de 5 MB). Cada requisição gera uma linha com método, endereço, status, tempo, usuário e um código que também é devolvido no cabeçalho `X-Request-ID`. Erros inesperados registram o rastreamento completo e devolvem esse código, para facilitar o suporte.
+**Logs**: vão para o console e para `logs/app.log`, com até 5 arquivos de 5 MB. Cada requisição registra método, endereço, resultado, tempo, usuário e um código, que também volta no cabeçalho `X-Request-ID`. Em erros inesperados, a mensagem mostra esse código, e basta procurá-lo no log para ver o rastreamento completo.
 
-Variáveis opcionais no `.env`:
+**Auditoria**: toda criação, alteração e exclusão (`POST`, `PUT`, `PATCH` e `DELETE`) fica na tabela `auditoria`, com usuário, endereço, resultado, IP e duração. Administradores consultam pela tela **Auditoria**, com filtros por usuário, tipo de ação, período e "só falhas".
 
-```env
-LOG_LEVEL=INFO
-LOG_DIR=logs
-```
+## API
 
-Toda criação, alteração ou exclusão (`POST`, `PUT`, `PATCH`, `DELETE`) fica registrada na tabela `auditoria`, com usuário, endereço, resultado, IP e duração. Administradores consultam em:
+A documentação completa e interativa fica em **`/docs`** (Swagger). Lá, o botão **Authorize** faz o login com e-mail e senha.
 
-```text
-GET /auditoria?usuario_id=1&metodo=POST&somente_falhas=true&data_inicio=2026-10-01&data_fim=2026-10-31
-```
-
-## Exportação
+### Autenticação
 
 ```text
-GET /exportacoes/produtos?formato=xlsx
-GET /exportacoes/movimentacoes?formato=pdf&data_inicio=2026-10-01
-GET /exportacoes/fornecedores?formato=xlsx&ativo=true
-GET /exportacoes/compras?formato=pdf&situacao_recebimento=PENDENTE
-GET /exportacoes/relatorio-compras?formato=xlsx&data_inicio=2026-01-01
+POST /usuarios          criar conta
+POST /usuarios/login    login com JSON {"email", "senha"}
+POST /usuarios/token    login por formulário (usado pelo Swagger)
+GET  /usuarios/me       usuário atual, perfil e permissões
 ```
 
-`formato` aceita `xlsx` (Excel) ou `pdf`. Os demais parâmetros são os mesmos filtros das telas. O Excel traz cabeçalho formatado, filtros, formatos de moeda e data e linha de totais; o relatório de compras sai com uma aba para cada resumo. No frontend, os botões **Excel** e **PDF** ficam no topo de cada tela e exportam o que está filtrado.
+As demais rotas exigem o cabeçalho `Authorization: Bearer <token>`.
 
-## Testes automatizados
+### Rotas
 
-O projeto utiliza Pytest para validar o comportamento da aplicação.
+| Área | Rotas |
+|---|---|
+| Produtos | `GET/POST /produtos`, `GET/PUT/DELETE /produtos/{id}` |
+| Categorias | `GET/POST /categorias`, `GET/PUT/DELETE /categorias/{id}` |
+| Movimentações | `GET/POST /movimentacoes`, `GET /movimentacoes/{id}` |
+| Relatórios | `GET /relatorios/resumo`, `/relatorios/maior-valor`, `/relatorios/compras` |
+| Fornecedores | `GET/POST /fornecedores`, `GET/PUT /fornecedores/{id}`, `PATCH /fornecedores/{id}/status` |
+| Formas de pagamento | `GET/POST /formas-pagamento`, `GET/PUT /formas-pagamento/{id}`, `PATCH /formas-pagamento/{id}/status` |
+| Solicitações | `GET/POST /solicitacoes-compra`, `GET/PUT /solicitacoes-compra/{id}`, `PATCH .../cancelar`, `.../aprovar`, `.../reprovar` |
+| Cotações | `GET/POST /solicitacoes-compra/{id}/cotacoes`, `GET/PUT/DELETE .../cotacoes/{cotacao_id}`, `GET .../cotacoes/comparacao` |
+| Compras | `POST/GET /solicitacoes-compra/{id}/compra`, `GET /compras`, `GET /compras/{id}` |
+| Recebimentos | `POST/GET /solicitacoes-compra/{id}/compra/recebimentos` |
+| Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}` |
+| Exportação | `GET /exportacoes/{recurso}?formato=xlsx\|pdf` |
+| Usuários | `GET /usuarios`, `PATCH /usuarios/{id}` |
+| Auditoria | `GET /auditoria` |
 
-Os testes utilizam um banco PostgreSQL separado:
+### Exemplos
+
+Cotação:
+
+```json
+{
+  "fornecedor_id": 1,
+  "frete": 15.50,
+  "prazo_entrega_dias": 7,
+  "validade": "2026-12-31",
+  "forma_pagamento_id": 5,
+  "itens": [
+    { "produto_id": 1, "preco_unitario": 2.35 },
+    { "produto_id": 2, "preco_unitario": 1.10 }
+  ]
+}
+```
+
+Recebimento parcial (sem `itens`, recebe tudo o que está pendente):
+
+```json
+{
+  "data_recebimento": "2026-10-05",
+  "nota_fiscal": "NF-123",
+  "itens": [{ "produto_id": 1, "quantidade": 6 }]
+}
+```
+
+## Regras de negócio
+
+**Estoque**
+- Cada produto pertence a uma categoria, e categorias com produtos não podem ser excluídas.
+- O estoque não fica negativo; cada movimentação atualiza a quantidade na mesma transação.
+- Produtos ligados a solicitações de compra não podem ser excluídos.
+
+**Fornecedores e cotações**
+- Fornecedores e formas de pagamento são inativados, nunca excluídos.
+- Novos vínculos só aceitam fornecedores e formas de pagamento ativos.
+- Cada fornecedor tem no máximo uma cotação por solicitação, só com produtos da própria solicitação.
+- Uma cotação pode cobrir só parte dos itens, mas só cotações completas e dentro da validade podem ser aprovadas.
+
+**Solicitações e compras**
+- Uma solicitação precisa de pelo menos um item, sem produtos repetidos.
+- Só solicitações abertas têm os itens editados.
+- Reprovações exigem justificativa.
+- Cada solicitação aprovada gera no máximo uma compra, que guarda uma cópia dos valores aprovados.
+- Recebimentos não passam da quantidade pendente e entram no estoque na mesma transação.
+- A solicitação vira `RECEBIDA` quando todos os itens chegam.
+
+**Segurança**
+- Senhas guardadas com bcrypt; o login inválido não diz se o erro foi no e-mail ou na senha.
+- Tokens de login expiram, e usuários inativos não acessam o sistema.
+
+## Estrutura do projeto
 
 ```text
-sistema_estoque_test
+sistema-estoque/
+├── .github/workflows/tests.yml   CI: testes e verificação do Docker
+├── alembic.ini                   configuração do Alembic
+├── migrations/                   migrations do banco
+│   └── versions/
+├── backend/
+│   ├── main.py                   aplicação, middleware de logs e auditoria
+│   ├── database.py               conexão e aplicação das migrations
+│   ├── autenticacao.py           JWT
+│   ├── permissoes.py             perfis e permissões
+│   ├── logs.py                   configuração dos logs
+│   ├── exportacao.py             geração de Excel e PDF
+│   ├── precos/                   fontes de preço e histórico
+│   ├── repositorio*.py           acesso ao banco
+│   ├── routes/                   rotas da API
+│   ├── schemas/                  validação com Pydantic
+│   └── tests/                    testes automatizados
+├── frontend/
+│   ├── index.html
+│   ├── css/app.css
+│   └── js/                       app, api, componentes, gráficos e telas
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── requirements.txt
 ```
 
-Isso evita alterar os dados do ambiente principal durante a execução dos testes.
+## Testes e integração contínua
 
-Para executar todos os testes:
+Os testes usam um banco PostgreSQL separado, `sistema_estoque_test`:
 
 ```bash
 python -m pytest -v
 ```
 
-A suíte cobre atualmente:
+São cerca de 330 casos de teste, cobrindo estoque, todo o fluxo de compras, permissões, auditoria, exportação, migrations e a consulta de preços. As chamadas ao Mercado Livre são simuladas, sem acessar a internet.
 
-- health check
-- CRUD de categorias
-- CRUD de produtos
-- relacionamento produto/categoria
-- filtros de produtos
-- paginação de produtos
-- movimentações de entrada e saída
-- bloqueio de estoque insuficiente
-- filtros e paginação de movimentações
-- relatórios
-- cadastro de usuários
-- hash e verificação de senhas
-- login
-- geração e validação de JWT
-- autorização com Bearer Token
-- acesso ao usuário autenticado
-- repositório de fornecedores
-- atualização, status e filtros de fornecedores
-- vínculo entre produtos e fornecedores
-- solicitações de compra
-- cotações
-- comparação de cotações
-- aprovação e reprovação
-- registro e consulta de compras
-- recebimentos e entrada automática no estoque
-- relatório de compras
-- formas de pagamento
-- perfis e permissões
-- auditoria
-- exportação para Excel e PDF
-- validações da API
+O GitHub Actions roda dois jobs a cada push e pull request na `main`:
 
-O resultado de cada execução fica disponível na aba **Actions** do GitHub.
+1. **tests**: sobe um PostgreSQL, instala as dependências e roda toda a suíte.
+2. **docker**: constrói as imagens, sobe o `docker compose` e confere a API, o frontend, as migrations e o cadastro de usuário.
 
-## Integração contínua
+## Possíveis evoluções
 
-O projeto utiliza GitHub Actions para executar automaticamente a suíte de testes.
+Todos os itens planejados foram concluídos. Ideias para o futuro:
 
-O workflow é executado em:
-
-- pushes para a branch `main`
-- pull requests direcionados para a branch `main`
-
-Durante a execução, o GitHub Actions:
-
-1. prepara o ambiente Python;
-2. inicia um serviço PostgreSQL;
-3. instala as dependências;
-4. configura as variáveis do ambiente de testes;
-5. configura uma chave JWT exclusiva para o CI;
-6. executa a suíte com Pytest.
-
-O workflow está localizado em:
-
-```text
-.github/workflows/tests.yml
-```
-
-## Regras de negócio
-
-- Cada produto pertence a uma categoria.
-- Categorias vinculadas a produtos não podem ser excluídas.
-- Entradas aumentam o estoque.
-- Saídas reduzem o estoque.
-- O estoque não pode ficar negativo.
-- Toda movimentação gera histórico.
-- Atualização do estoque e criação da movimentação usam a mesma transação.
-- Movimentações podem ser filtradas por produto, tipo e período.
-- Intervalos de datas inválidos são rejeitados.
-- Produtos e movimentações possuem paginação.
-- Senhas são armazenadas utilizando hash bcrypt.
-- Login inválido não informa se o erro ocorreu no e-mail ou na senha.
-- Tokens JWT possuem tempo de expiração.
-- Usuários inativos não podem acessar rotas autenticadas.
-- Todas as rotas de negócio exigem autenticação.
-- Fornecedores são inativados em vez de excluídos.
-- Produtos podem ter um fornecedor opcional.
-- Novos vínculos só podem ser feitos com fornecedores ativos.
-- Uma solicitação de compra precisa ter pelo menos um item.
-- Cada produto aparece no máximo uma vez por solicitação.
-- Apenas solicitações abertas podem ser editadas.
-- Solicitações abertas ou em cotação podem ser canceladas.
-- Cada fornecedor pode ter apenas uma cotação por solicitação.
-- Cotações só aceitam fornecedores ativos e produtos da própria solicitação.
-- Uma cotação pode cobrir apenas parte dos itens da solicitação.
-- Só cotações completas e dentro da validade podem ser aprovadas.
-- Reprovações exigem justificativa.
-- Solicitações aprovadas ainda podem ser canceladas até o registro da compra.
-- Cada solicitação aprovada gera no máximo uma compra.
-- A compra guarda uma cópia dos valores aprovados.
-- Recebimentos não podem passar da quantidade pendente de cada item.
-- Cada recebimento gera entradas no estoque na mesma transação.
-- A solicitação só passa para `RECEBIDA` quando todos os itens chegam.
-- Produtos vinculados a solicitações de compra não podem ser excluídos.
-
-## Próximas funcionalidades
-
-O projeto está evoluindo do gerenciamento de estoque para um fluxo integrado de compras.
-
-Próximas etapas:
-
-1. ~~CRUD completo de fornecedores~~ (concluído)
-2. ~~Solicitações de compra~~ (concluído)
-3. ~~Registro de cotações por fornecedor~~ (concluído)
-4. ~~Comparação de preços, frete e prazo~~ (concluído)
-5. ~~Aprovação de compras~~ (concluído)
-6. ~~Registro da compra realizada~~ (concluído)
-7. ~~Recebimento de materiais~~ (concluído)
-8. ~~Entrada automática dos materiais no estoque~~ (concluído)
-9. ~~Histórico e relatórios de compras~~ (concluído)
-10. ~~Dashboard~~ (painel no frontend)
-11. ~~Exportação de dados para Excel/PDF~~ (concluído)
-12. ~~Controle de permissões por usuário~~ (concluído)
-13. ~~Logs da aplicação~~ (concluído)
-14. Migrations com ferramenta dedicada
-15. Dockerização da aplicação
-16. Integração futura com APIs para consulta de preços
+- Recuperação de senha por e-mail
+- Notificações para quem precisa agir (aprovar, comprar, receber)
+- Anexar notas fiscais e propostas às compras
+- Sugestão automática de compra a partir do estoque mínimo e do consumo médio
+- Outras fontes de preço além do Mercado Livre
