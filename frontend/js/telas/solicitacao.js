@@ -116,7 +116,7 @@ export async function telaSolicitacao(area, id) {
   const recarregar = () => telaSolicitacao(area, id);
   const status = solicitacao.status;
 
-  const propria = solicitacao.solicitante_id === usuario()?.id;
+  const propria = solicitacao.solicitante_id === usuario()?.id && usuario()?.perfil !== "ADMINISTRADOR";
   const permite = {
     editar: pode("solicitacoes.editar"),
     cotar: pode("cotacoes.editar"),

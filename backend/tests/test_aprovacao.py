@@ -1,6 +1,8 @@
+from backend.database import conectar
 from backend.tests.apoio_compras import (
     VALIDADE_VENCIDA,
     criar_fornecedor,
+    criar_produto,
     criar_solicitacao_com_dois_itens,
     novo_cliente,
     registrar_cotacao,
@@ -188,7 +190,7 @@ def test_aprovar_solicitacao_inexistente(cliente_autenticado):
     assert resposta.status_code == 404
 
 
-def test_nao_aprovar_a_propria_solicitacao(cliente_autenticado):
+def test_administrador_aprova_a_propria_solicitacao(cliente_autenticado):
     cliente = cliente_autenticado
     solicitacao_id, cabo, conector = criar_solicitacao_com_dois_itens(cliente)
     fornecedor_id = criar_fornecedor(cliente, "Fornecedor A")
@@ -198,11 +200,49 @@ def test_nao_aprovar_a_propria_solicitacao(cliente_autenticado):
         {cabo: 2, conector: 1}
     )
 
-    aprovacao = cliente.patch(
-        f"/solicitacoes-compra/{solicitacao_id}/aprovar",
-        json={"cotacao_id": cotacao["id"]}
+    resposta = aprovar(cliente, solicitacao_id, cotacao["id"])
+
+    assert resposta.status_code == 200
+    assert resposta.json()["status"] == "APROVADA"
+
+
+def test_aprovador_nao_decide_a_propria_solicitacao(cliente_autenticado):
+    comprador = novo_cliente("COMPRADOR")
+    cabo = criar_produto(cliente_autenticado, "Cabo")
+    conector = criar_produto(cliente_autenticado, "Conector")
+
+    criada = comprador.post(
+        "/solicitacoes-compra",
+        json={
+            "itens": [
+                {"produto_id": cabo, "quantidade": 10},
+                {"produto_id": conector, "quantidade": 4}
+            ]
+        }
     )
-    reprovacao = cliente.patch(
+    assert criada.status_code == 201
+    solicitacao_id = criada.json()["id"]
+    fornecedor_id = criar_fornecedor(cliente_autenticado, "Fornecedor A")
+
+    cotacao = registrar_cotacao(
+        cliente_autenticado, solicitacao_id, fornecedor_id,
+        {cabo: 2, conector: 1}
+    )
+
+    # O mesmo usuário passa a ser aprovador depois de criar a solicitação
+    usuario_id = comprador.get("/usuarios/me").json()["id"]
+    conexao = conectar()
+    cursor = conexao.cursor()
+    cursor.execute(
+        "UPDATE usuarios SET perfil = 'APROVADOR' WHERE id = %s;",
+        (usuario_id,)
+    )
+    conexao.commit()
+    cursor.close()
+    conexao.close()
+
+    aprovacao = aprovar(comprador, solicitacao_id, cotacao["id"])
+    reprovacao = comprador.patch(
         f"/solicitacoes-compra/{solicitacao_id}/reprovar",
         json={"justificativa": "Teste de segregação"}
     )

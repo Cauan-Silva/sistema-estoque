@@ -36,7 +36,7 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Solicitações de compra com vários itens
 - Cotações por fornecedor, com preços por item, frete, prazo, validade e forma de pagamento
 - Comparação de cotações: menor total, menor prazo, menor frete e melhor preço de cada produto
-- Aprovação e reprovação com justificativa, sem permitir aprovar a própria solicitação
+- Aprovação e reprovação com justificativa; só o Administrador pode decidir sobre a própria solicitação
 - Registro da compra com cópia dos valores aprovados
 - Recebimento total ou parcial, com **entrada automática no estoque**
 - Relatório de compras por período, fornecedor, produto e mês, com pontualidade das entregas
@@ -216,7 +216,7 @@ Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Forn
 | Gerenciar usuários e ver a auditoria | ✓ | | | | |
 
 - O primeiro usuário de um banco novo é Administrador; os seguintes entram como Consulta.
-- Ninguém aprova ou reprova uma solicitação criada por si.
+- Ninguém aprova ou reprova uma solicitação criada por si, exceto o Administrador.
 - Um administrador não pode remover o próprio acesso de administrador.
 - Sem permissão, a API responde `403` e o frontend esconde o botão.
 

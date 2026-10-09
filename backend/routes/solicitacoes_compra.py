@@ -7,7 +7,7 @@ from fastapi import (
 )
 
 from backend.autenticacao import obter_usuario_atual
-from backend.permissoes import exigir
+from backend.permissoes import exigir, perfil_do_usuario
 from backend.repositorio_aprovacao import (
     aprovar_solicitacao,
     reprovar_solicitacao,
@@ -214,6 +214,11 @@ def cancelar(solicitacao_id: int):
     return solicitacao
 
 
+def administrador(usuario) -> bool:
+    """Só o administrador pode decidir sobre uma solicitação criada por ele."""
+    return perfil_do_usuario(usuario) == "ADMINISTRADOR"
+
+
 @router.patch(
     "/{solicitacao_id}/aprovar",
     dependencies=[exigir("compras.aprovar")],
@@ -228,7 +233,8 @@ def aprovar(
         solicitacao_id=solicitacao_id,
         cotacao_id=dados.cotacao_id,
         usuario_id=usuario[0],
-        justificativa=dados.justificativa
+        justificativa=dados.justificativa,
+        permitir_propria=administrador(usuario)
     )
 
     if erro is not None or solicitacao is None:
@@ -253,7 +259,8 @@ def reprovar(
     solicitacao, erro = reprovar_solicitacao(
         solicitacao_id=solicitacao_id,
         usuario_id=usuario[0],
-        justificativa=dados.justificativa.strip()
+        justificativa=dados.justificativa.strip(),
+        permitir_propria=administrador(usuario)
     )
 
     if erro is not None or solicitacao is None:

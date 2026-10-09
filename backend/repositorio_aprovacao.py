@@ -16,7 +16,7 @@ STATUS_PERMITEM_APROVACAO = ("EM_COTACAO",)
 STATUS_PERMITEM_REPROVACAO = ("ABERTA", "EM_COTACAO")
 
 
-def _travar_status(cursor, solicitacao_id: int, permitidos, usuario_id: int):
+def _travar_status(cursor, solicitacao_id: int, permitidos, usuario_id: int, permitir_propria: bool):
     cursor.execute(
         """
         SELECT status, solicitante_id
@@ -32,7 +32,7 @@ def _travar_status(cursor, solicitacao_id: int, permitidos, usuario_id: int):
     if registro is None:
         return "solicitacao_nao_encontrada"
 
-    if registro[1] == usuario_id:
+    if registro[1] == usuario_id and not permitir_propria:
         return "decisao_propria"
 
     if registro[0] not in permitidos:
@@ -48,7 +48,8 @@ def _registrar_decisao(
     justificativa: str | None,
     permitidos,
     cotacao_id: int | None = None,
-    validar=None
+    validar=None,
+    permitir_propria: bool = False
 ):
     conexao = conectar()
 
@@ -58,7 +59,7 @@ def _registrar_decisao(
     try:
         cursor = conexao.cursor()
 
-        erro = _travar_status(cursor, solicitacao_id, permitidos, usuario_id)
+        erro = _travar_status(cursor, solicitacao_id, permitidos, usuario_id, permitir_propria)
 
         if erro is None and validar is not None:
             erro = validar()
@@ -111,7 +112,8 @@ def aprovar_solicitacao(
     solicitacao_id: int,
     cotacao_id: int,
     usuario_id: int,
-    justificativa: str | None
+    justificativa: str | None,
+    permitir_propria: bool = False
 ):
     def validar():
         cotacao = buscar_cotacao(solicitacao_id, cotacao_id)
@@ -140,19 +142,22 @@ def aprovar_solicitacao(
         justificativa=justificativa,
         permitidos=STATUS_PERMITEM_APROVACAO,
         cotacao_id=cotacao_id,
-        validar=validar
+        validar=validar,
+        permitir_propria=permitir_propria
     )
 
 
 def reprovar_solicitacao(
     solicitacao_id: int,
     usuario_id: int,
-    justificativa: str
+    justificativa: str,
+    permitir_propria: bool = False
 ):
     return _registrar_decisao(
         solicitacao_id=solicitacao_id,
         usuario_id=usuario_id,
         novo_status="REPROVADA",
         justificativa=justificativa,
-        permitidos=STATUS_PERMITEM_REPROVACAO
+        permitidos=STATUS_PERMITEM_REPROVACAO,
+        permitir_propria=permitir_propria
     )
