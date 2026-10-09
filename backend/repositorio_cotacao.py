@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 STATUS_PERMITEM_COTACAO = ("ABERTA", "EM_COTACAO")
 
 CENTAVOS = Decimal("0.01")
+CASAS_PRECO = Decimal("0.0001")
 
 
 def _dinheiro(valor) -> float:
@@ -68,7 +69,7 @@ def _buscar_itens(cursor, cotacao_id: int, solicitacao_id: int):
             "produto_id": registro[0],
             "produto": registro[1],
             "quantidade": registro[2],
-            "preco_unitario": _dinheiro(registro[3]),
+            "preco_unitario": float(Decimal(registro[3]).quantize(CASAS_PRECO, rounding=ROUND_HALF_UP)),
             "subtotal": _dinheiro(registro[2] * registro[3])
         }
         for registro in cursor.fetchall()

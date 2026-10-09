@@ -88,7 +88,7 @@ jobs:
         run: |
           curl --fail --silent http://localhost:8000/health
           curl --fail --silent http://localhost:8000/app/ | grep -q "Estoque"
-          docker compose exec -T db psql -U postgres -d sistema_estoque -tAc "SELECT version_num FROM alembic_version" | grep -q "0003"
+          docker compose exec -T db psql -U postgres -d sistema_estoque -tAc "SELECT version_num FROM alembic_version" | grep -q "0004"
           curl --fail --silent -X POST http://localhost:8000/usuarios \
             -H "Content-Type: application/json" \
             -d '{"nome":"Admin CI","email":"admin@ci.com","senha":"senha12345"}' | grep -q ADMINISTRADOR
