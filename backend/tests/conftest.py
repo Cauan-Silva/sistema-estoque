@@ -6,13 +6,13 @@ from fastapi.testclient import TestClient
 
 os.environ["DB_NAME"] = "sistema_estoque_test"
 
-from backend.database import conectar, criar_tabela
+from backend.database import aplicar_migracoes, conectar
 from backend.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
 def preparar_banco_testes():
-    criar_tabela()
+    aplicar_migracoes()
 
     yield
 

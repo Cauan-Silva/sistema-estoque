@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.autenticacao import validar_token_acesso
-from backend.database import criar_tabela
+from backend.database import aplicar_migracoes
 from backend.logs import configurar_logs
 from backend.repositorio_auditoria import registrar_auditoria
 
@@ -61,7 +61,7 @@ METODOS_AUDITADOS = {"POST", "PUT", "PATCH", "DELETE"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    criar_tabela()
+    aplicar_migracoes()
 
     yield
 
