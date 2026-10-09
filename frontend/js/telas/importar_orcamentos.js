@@ -88,7 +88,7 @@ export async function telaImportarOrcamentos(area) {
 
   function receber(arquivos) {
     arquivos.forEach((arquivo) => {
-      const orcamento = { id: (sequencia += 1), arquivo: arquivo.name, estado: "lendo" };
+      const orcamento = { id: (sequencia += 1), arquivo: arquivo.name, original: arquivo, estado: "lendo" };
       estado.orcamentos.push(orcamento);
       ler(orcamento, arquivo);
     });
@@ -530,6 +530,28 @@ export async function telaImportarOrcamentos(area) {
     return { erros, corpo: { observacao: estado.observacao.trim() || null, itens, orcamentos } };
   }
 
+  /* Guarda os arquivos recebidos como anexos da solicitação criada. */
+  async function anexarOriginais(solicitacaoId) {
+    let anexados = 0;
+
+    for (const orcamento of prontos()) {
+      if (!orcamento.original || !orcamento.itens.some((item) => item.produto_id)) continue;
+
+      try {
+        await api.enviarArquivo(`/solicitacoes-compra/${solicitacaoId}/anexos`, orcamento.original, {
+          tipo: orcamento.lido.tipo_documento === "nota_fiscal" ? "NOTA_FISCAL" : "PROPOSTA",
+          fornecedor_id: orcamento.fornecedor_id || "",
+          descricao: orcamento.lido.numero_documento ? `Documento ${orcamento.lido.numero_documento}` : "Orçamento importado",
+        });
+        anexados += 1;
+      } catch (falha) {
+        avisar(`Não foi possível anexar ${orcamento.arquivo}: ${falha.message}`, "erro");
+      }
+    }
+
+    return anexados;
+  }
+
   async function criar() {
     const { erros, corpo } = montarCorpo();
 
@@ -542,7 +564,11 @@ export async function telaImportarOrcamentos(area) {
 
     try {
       const solicitacao = await api.post("/orcamentos/solicitacao", corpo);
-      avisar(`Solicitação Nº ${solicitacao.id} criada com ${corpo.orcamentos.length} cotação(ões).`);
+      const anexados = await anexarOriginais(solicitacao.id);
+      avisar(
+        `Solicitação Nº ${solicitacao.id} criada com ${corpo.orcamentos.length} cotação(ões)` +
+          (anexados ? ` e ${anexados} arquivo(s) anexado(s).` : ".")
+      );
       window.location.hash = `#/solicitacoes/${solicitacao.id}`;
     } catch (falha) {
       avisar(falha.message, "erro");

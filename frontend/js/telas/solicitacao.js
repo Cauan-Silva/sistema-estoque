@@ -1,4 +1,5 @@
 import { api, baixarArquivo, listarTodos } from "../api.js";
+import { icone } from "../icones.js";
 import {
   abrirDialogo,
   avisar,
@@ -12,6 +13,7 @@ import {
   formatar,
   h,
   hojeISO,
+  seletor,
   tabela,
   vazio,
 } from "../ui.js";
@@ -98,12 +100,13 @@ function ficha(itens) {
 }
 
 export async function telaSolicitacao(area, id) {
-  const [solicitacao, cotacoes, comparacao, produtos, fornecedores] = await Promise.all([
+  const [solicitacao, cotacoes, comparacao, produtos, fornecedores, anexos] = await Promise.all([
     api.get(`/solicitacoes-compra/${id}`),
     api.get(`/solicitacoes-compra/${id}/cotacoes`),
     api.get(`/solicitacoes-compra/${id}/cotacoes/comparacao`),
     listarTodos("/produtos"),
     api.get("/fornecedores?ativo=true"),
+    api.get(`/solicitacoes-compra/${id}/anexos`),
   ]);
 
   const temCompra = ["COMPRADA", "RECEBIDA"].includes(solicitacao.status);
@@ -316,6 +319,123 @@ export async function telaSolicitacao(area, id) {
     }
   }
 
+  /* ---------- Anexos ---------- */
+
+  const TIPOS_ANEXO = [
+    ["NOTA_FISCAL", "Nota fiscal"],
+    ["PROPOSTA", "Proposta / orçamento"],
+    ["PEDIDO", "Pedido de compra"],
+    ["BOLETO", "Boleto"],
+    ["OUTRO", "Outro"],
+  ];
+  const nomeTipoAnexo = (tipo) => (TIPOS_ANEXO.find(([valor]) => valor === tipo) || [tipo, tipo])[1];
+  const podeAnexar = permite.editar || permite.cotar || permite.comprar || permite.receber;
+
+  function tamanhoArquivo(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+  }
+
+  function anexarArquivo() {
+    const tipoSugerido = ["COMPRADA", "RECEBIDA"].includes(status) ? "NOTA_FISCAL" : "PROPOSTA";
+    const arquivo = h("input", {
+      type: "file",
+      name: "arquivo",
+      required: true,
+      accept: ".pdf,.png,.jpg,.jpeg,.webp,.gif,.xml,.xlsx,.xls,.csv,.docx,.doc,.txt",
+    });
+
+    abrirDialogo({
+      titulo: "Anexar arquivo",
+      descricao: "PDF, imagem, XML, planilha, documento ou texto, até 10 MB.",
+      conteudo: [
+        h("label", {}, "Arquivo", arquivo),
+        h("div", { class: "linha-campos" },
+          h("label", {}, "Tipo", seletor(TIPOS_ANEXO, tipoSugerido, { name: "tipo" })),
+          h("label", {}, "Fornecedor", seletor(
+            [["", "Nenhum"], ...fornecedores.map((f) => [f.id, f.nome])],
+            compra?.fornecedor_id ?? "",
+            { name: "fornecedor_id" }
+          ))
+        ),
+        h("label", {}, "Descrição", h("input", { name: "descricao", maxlength: 200, placeholder: "Ex.: NF 1234, primeira entrega" })),
+      ],
+      textoAcao: "Anexar",
+      aoEnviar: async (formulario) => {
+        const [escolhido] = arquivo.files;
+        if (!escolhido) throw new Error("Escolha um arquivo.");
+        await api.enviarArquivo(`/solicitacoes-compra/${id}/anexos`, escolhido, {
+          tipo: formulario.elements.tipo.value,
+          fornecedor_id: formulario.elements.fornecedor_id.value,
+          descricao: formulario.elements.descricao.value.trim(),
+        });
+        avisar(`${escolhido.name} anexado.`);
+        recarregar();
+      },
+    });
+  }
+
+  async function excluirAnexo(anexo) {
+    const ok = await confirmar({
+      titulo: "Excluir anexo",
+      mensagem: `O arquivo ${anexo.nome_arquivo} será excluído.`,
+      textoAcao: "Excluir anexo",
+      perigo: true,
+    });
+    if (ok) {
+      await executar(() => api.delete(`/solicitacoes-compra/${id}/anexos/${anexo.id}`), "Anexo excluído.");
+      recarregar();
+    }
+  }
+
+  function blocoAnexos() {
+    const eu = usuario();
+    return h(
+      "section",
+      { class: "secao" },
+      h(
+        "div",
+        { class: "titulo-secao" },
+        h("h2", {}, "Anexos"),
+        podeAnexar ? h("button", { class: "primario", onClick: anexarArquivo }, icone("clipe"), "Anexar arquivo") : null
+      ),
+      tabela(
+        [
+          { titulo: "Tipo", valor: (a) => h("span", { class: "chip-anexo", dataset: { tipo: a.tipo } }, nomeTipoAnexo(a.tipo)) },
+          {
+            titulo: "Arquivo",
+            valor: (a) =>
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "link nome-anexo",
+                  title: "Baixar",
+                  onClick: (evento) => baixar(`/solicitacoes-compra/${id}/anexos/${a.id}`, evento),
+                },
+                a.nome_arquivo
+              ),
+          },
+          { titulo: "Descrição", valor: (a) => a.descricao || h("span", { class: "suave" }, "—") },
+          { titulo: "Fornecedor", valor: (a) => a.fornecedor || h("span", { class: "suave" }, "—") },
+          { titulo: "Enviado", valor: (a) => `${formatar.dataHora(a.data_envio)}${a.usuario ? ` por ${a.usuario}` : ""}` },
+          { titulo: "Tamanho", classe: "direita numero", valor: (a) => tamanhoArquivo(a.tamanho) },
+          {
+            titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
+            classe: "acoes",
+            valor: (a) =>
+              a.usuario_id === eu?.id || eu?.perfil === "ADMINISTRADOR"
+                ? h("button", { class: "pequeno perigo", onClick: () => excluirAnexo(a) }, "Excluir")
+                : null,
+          },
+        ],
+        anexos,
+        { vazio: "Nenhum arquivo anexado. Guarde aqui propostas, notas fiscais e boletos desta compra." }
+      )
+    );
+  }
+
   /* ---------- Planilha de orçamento ---------- */
 
   async function baixar(caminho, evento) {
@@ -353,18 +473,18 @@ export async function telaSolicitacao(area, id) {
   }
 
   function importarPlanilha() {
-    const seletor = h("input", {
+    const escolha = h("input", {
       type: "file",
       accept: ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       hidden: true,
       onChange: () => {
-        const [arquivo] = seletor.files;
-        seletor.remove();
+        const [arquivo] = escolha.files;
+        escolha.remove();
         if (arquivo) enviarPlanilha(arquivo);
       },
     });
-    document.body.append(seletor);
-    seletor.click();
+    document.body.append(escolha);
+    escolha.click();
   }
 
   function cartaoCotacao(cotacao) {
@@ -785,7 +905,8 @@ export async function telaSolicitacao(area, id) {
                 vazio("Peça preços aos fornecedores e registre cada cotação aqui para comparar.")
               )
         )
-      : null
+      : null,
+    blocoAnexos(),
   ];
 
   area.replaceChildren(...secoes.filter(Boolean));

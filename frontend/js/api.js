@@ -131,9 +131,12 @@ export const api = {
   put: (caminho, corpo) => requisicao("PUT", caminho, corpo),
   patch: (caminho, corpo) => requisicao("PATCH", caminho, corpo ?? {}),
   delete: (caminho) => requisicao("DELETE", caminho),
-  enviarArquivo(caminho, arquivo, campo = "arquivo") {
+  enviarArquivo(caminho, arquivo, extras = {}, campo = "arquivo") {
     const corpo = new FormData();
     corpo.append(campo, arquivo);
+    Object.entries(extras).forEach(([chave, valor]) => {
+      if (valor !== undefined && valor !== null && valor !== "") corpo.append(chave, valor);
+    });
     return requisicao("POST", caminho, corpo);
   },
 };

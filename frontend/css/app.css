@@ -2982,3 +2982,27 @@ button.link {
     width: auto;
   }
 }
+
+/* Anexos */
+.chip-anexo {
+  --tom: var(--fibra-ardosia);
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--tom) 14%, var(--superficie));
+  color: color-mix(in srgb, var(--tom) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.chip-anexo[data-tipo="NOTA_FISCAL"] { --tom: var(--cor-3); }
+.chip-anexo[data-tipo="PROPOSTA"] { --tom: var(--cor-1); }
+.chip-anexo[data-tipo="PEDIDO"] { --tom: var(--cor-4); }
+.chip-anexo[data-tipo="BOLETO"] { --tom: var(--cor-2); }
+
+button.nome-anexo {
+  text-align: left;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
