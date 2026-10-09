@@ -13,6 +13,30 @@ function nomeMes(mes) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
+const LIMITE_LINHAS = 10;
+
+/* Mostra as 10 primeiras linhas e um botão para ver todas (o relatório anual tem centenas de produtos). */
+function tabelaResumida(colunas, linhas, opcoes, rotulo) {
+  const caixa = h("div", { class: "tabela-resumida" });
+
+  function desenhar(todas) {
+    const visiveis = todas ? linhas : linhas.slice(0, LIMITE_LINHAS);
+    caixa.replaceChildren(
+      tabela(colunas, visiveis, opcoes),
+      linhas.length > LIMITE_LINHAS
+        ? h(
+            "button",
+            { type: "button", class: "pequeno ver-mais", onClick: () => desenhar(!todas) },
+            todas ? `Mostrar só os ${LIMITE_LINHAS} maiores` : `Mostrar todos os ${linhas.length} ${rotulo}`
+          )
+        : null
+    );
+  }
+
+  desenhar(false);
+  return caixa;
+}
+
 function barra(valor, maximo, cor) {
   const largura = maximo > 0 ? Math.max(2, Math.round((valor / maximo) * 100)) : 0;
 
@@ -43,7 +67,6 @@ export async function telaRelatorioCompras(area) {
 
 
     const maiorMes = Math.max(0, ...dados.por_mes.map((m) => m.valor_total));
-    const maiorFornecedor = Math.max(0, ...dados.por_fornecedor.map((f) => f.valor_total));
 
     conteudo.replaceChildren(
       h(
@@ -130,7 +153,7 @@ export async function telaRelatorioCompras(area) {
           "section",
           { class: "secao" },
           h("h2", {}, "Por fornecedor"),
-          tabela(
+          tabelaResumida(
             [
               { titulo: "Fornecedor", valor: (f) => f.fornecedor },
               { titulo: "Compras", classe: "direita numero", valor: (f) => formatar.numero(f.compras) },
@@ -143,14 +166,10 @@ export async function telaRelatorioCompras(area) {
                   return total ? `${f.entregas_no_prazo} de ${total}` : "—";
                 },
               },
-              {
-                titulo: h("span", { class: "oculto-visualmente" }, "Proporção"),
-                classe: "coluna-barra",
-                valor: (f) => barra(f.valor_total, maiorFornecedor, "var(--cor-2)"),
-              },
             ],
             dados.por_fornecedor,
-            { vazio: "Nenhuma compra no período." }
+            { vazio: "Nenhuma compra no período." },
+            "fornecedores"
           )
         )
       ),
@@ -158,7 +177,7 @@ export async function telaRelatorioCompras(area) {
         "section",
         { class: "secao" },
         h("h2", {}, "Por produto"),
-        tabela(
+        tabelaResumida(
           [
             { titulo: "Produto", valor: (p) => p.produto },
             { titulo: "Quantidade", classe: "direita numero", valor: (p) => formatar.numero(p.quantidade) },
@@ -168,7 +187,8 @@ export async function telaRelatorioCompras(area) {
             { titulo: "Maior preço", classe: "direita numero", valor: (p) => formatar.moeda(p.maior_preco) },
           ],
           dados.por_produto,
-          { vazio: "Nenhum produto comprado no período." }
+          { vazio: "Nenhum produto comprado no período." },
+          "produtos"
         )
       )
     );

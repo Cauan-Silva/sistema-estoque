@@ -59,6 +59,12 @@ function tendencia(atual, anterior) {
   return { percentual, sentido: percentual >= 0 ? "alta" : "baixa" };
 }
 
+/* Valores grandes (R$ 4.501.762,99) diminuem a fonte em vez de quebrar a linha. */
+export function tamanhoValor(texto) {
+  const comprimento = String(texto).length;
+  return comprimento > 15 ? "muito-longo" : comprimento > 11 ? "longo" : "normal";
+}
+
 function indicador({ nomeIcone, cor, rotulo, valor, variacao, legenda }) {
   return h(
     "article",
@@ -68,7 +74,7 @@ function indicador({ nomeIcone, cor, rotulo, valor, variacao, legenda }) {
       "div",
       { class: "kpi-texto" },
       h("h3", {}, rotulo),
-      h("p", { class: "kpi-valor" }, valor),
+      h("p", { class: "kpi-valor", dataset: { tamanho: tamanhoValor(valor) } }, valor),
       variacao
         ? h(
             "p",
@@ -122,8 +128,12 @@ export async function telaPainel(area) {
     ]);
 
   const porDia = movimentosPorDia(movimentacoes, dias);
+  // Compara com os mesmos dias do mês anterior (1 a hoje), e não com o mês anterior inteiro.
+  const diaDeHoje = String(hoje.getDate()).padStart(2, "0");
   const noMes = movimentacoes.filter((m) => m.data_movimentacao.startsWith(mesAtual)).length;
-  const noMesAnterior = movimentacoes.filter((m) => m.data_movimentacao.startsWith(mesAnterior)).length;
+  const noMesAnterior = movimentacoes.filter(
+    (m) => m.data_movimentacao.startsWith(mesAnterior) && m.data_movimentacao.slice(8, 10) <= diaDeHoje
+  ).length;
   const variacaoMes = tendencia(noMes, noMesAnterior);
   const pendentes = [...compradas, ...aprovadas, ...emCotacao, ...abertas].slice(0, 6);
 
@@ -161,7 +171,9 @@ export async function telaPainel(area) {
         rotulo: "Movimentações no mês",
         valor: formatar.numero(noMes),
         variacao: variacaoMes,
-        legenda: variacaoMes ? "Em relação ao mês anterior" : "Sem movimentações no mês anterior",
+        legenda: variacaoMes
+          ? `Em relação aos mesmos ${Number(diaDeHoje)} dias do mês anterior`
+          : "Sem movimentações no mesmo período do mês anterior",
       })
     ),
     h(

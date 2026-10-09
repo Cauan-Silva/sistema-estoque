@@ -269,7 +269,12 @@ export function cartaoIndicador({ rotulo, valor, cor = "1", detalhe, variacao, v
     h(
       "div",
       { class: "cartao-corpo" },
-      h("div", {}, h("p", { class: "cartao-valor" }, valor), detalhe ? h("p", { class: "cartao-detalhe" }, detalhe) : null),
+      h(
+        "div",
+        {},
+        h("p", { class: "cartao-valor", dataset: { tamanho: String(valor).length > 15 ? "muito-longo" : String(valor).length > 11 ? "longo" : "normal" } }, valor),
+        detalhe ? h("p", { class: "cartao-detalhe" }, detalhe) : null
+      ),
       visual || null
     )
   );

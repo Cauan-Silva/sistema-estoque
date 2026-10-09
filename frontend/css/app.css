@@ -2605,6 +2605,12 @@ tr.selecionavel:focus-visible {
   white-space: nowrap;
 }
 
+/* Nomes de produto podem quebrar; datas, quantidades e etiquetas não */
+.bloco td:nth-child(2) {
+  white-space: normal;
+  min-width: 180px;
+}
+
 .bloco th,
 .bloco td {
   padding-left: 12px;
@@ -3118,4 +3124,49 @@ button.nome-anexo {
   .resumo-sugestao .dica-campo {
     display: none;
   }
+}
+
+/* Listas com nomes longos (fornecedores, produtos) não podem alargar a página */
+select {
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.filtros label,
+.campos-orcamento label,
+.linha-campos label {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Valores grandes diminuem em vez de quebrar a linha */
+.kpi-valor,
+.cartao-valor {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.kpi-valor[data-tamanho="longo"],
+.cartao-valor[data-tamanho="longo"] {
+  font-size: clamp(1.25rem, 1.8vw, 1.6rem);
+}
+
+.kpi-valor[data-tamanho="muito-longo"],
+.cartao-valor[data-tamanho="muito-longo"] {
+  font-size: clamp(1.1rem, 1.5vw, 1.35rem);
+}
+
+/* Nomes longos de produto quebram a linha nas tabelas do painel */
+.bloco td:has(.produto-celula) {
+  white-space: normal;
+  min-width: 200px;
+}
+
+.tabela-resumida .ver-mais {
+  margin-top: 10px;
+}
+
+.coluna-barra {
+  min-width: 90px;
 }
