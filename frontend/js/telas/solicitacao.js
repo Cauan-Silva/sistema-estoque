@@ -16,6 +16,7 @@ import { formularioSolicitacao } from "./solicitacoes.js";
 import { abrirRegistroCompra } from "./acoes_compra.js";
 import { campoFormaPagamento } from "./formas_pagamento.js";
 import { pode, usuario } from "../sessao.js";
+import { referenciaPreco } from "./precos.js";
 
 const PODE_EDITAR = ["ABERTA"];
 const PODE_COTAR = ["ABERTA", "EM_COTACAO"];
@@ -209,8 +210,13 @@ export async function telaSolicitacao(area, id) {
           )
         );
 
-    const camposPreco = solicitacao.itens.map((item) =>
-      h(
+    const camposPreco = solicitacao.itens.map((item) => {
+      const referencia = h("small", { class: "referencia-preco" });
+      referenciaPreco(item.produto_id).then((texto) => {
+        referencia.textContent = texto;
+      });
+
+      return h(
         "label",
         {},
         `${item.produto} (${formatar.numero(item.quantidade)} un.)`,
@@ -221,9 +227,10 @@ export async function telaSolicitacao(area, id) {
           name: `preco_${item.produto_id}`,
           placeholder: "Preço unitário em R$, vazio se não cotou",
           value: precos.get(item.produto_id) ?? "",
-        })
-      )
-    );
+        }),
+        referencia
+      );
+    });
 
     const formaPagamento = campoFormaPagamento(
       cotacao?.forma_pagamento_id

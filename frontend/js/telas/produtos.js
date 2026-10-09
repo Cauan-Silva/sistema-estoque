@@ -1,5 +1,6 @@
 import { api, montarQuery } from "../api.js";
 import { pode } from "../sessao.js";
+import { abrirConsultaPrecos } from "./precos.js";
 import {
   abrirFormulario,
   botoesExportar,
@@ -174,7 +175,9 @@ export async function telaProdutos(area) {
           {
             titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
             classe: "acoes",
-            valor: (p) => !podeEditar ? null : [
+            valor: (p) => [
+              h("button", { class: "pequeno", onClick: () => abrirConsultaPrecos(p) }, "Preços"),
+              ...(!podeEditar ? [] : [
               h("button", { class: "pequeno", onClick: () => movimentar(p, "ENTRADA") }, "Entrada"),
               h(
                 "button",
@@ -183,6 +186,7 @@ export async function telaProdutos(area) {
               ),
               h("button", { class: "pequeno", onClick: () => editar(p) }, "Editar"),
               h("button", { class: "pequeno perigo", onClick: () => excluir(p) }, "Excluir"),
+              ]),
             ],
           },
         ],
