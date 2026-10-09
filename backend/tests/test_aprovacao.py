@@ -200,10 +200,14 @@ def test_administrador_aprova_a_propria_solicitacao(cliente_autenticado):
         {cabo: 2, conector: 1}
     )
 
-    resposta = aprovar(cliente, solicitacao_id, cotacao["id"])
+    resposta = cliente.patch(
+        f"/solicitacoes-compra/{solicitacao_id}/aprovar",
+        json={"cotacao_id": cotacao["id"]}
+    )
 
     assert resposta.status_code == 200
     assert resposta.json()["status"] == "APROVADA"
+    assert resposta.json()["decisao_por"] == "Usuario Testes"
 
 
 def test_aprovador_nao_decide_a_propria_solicitacao(cliente_autenticado):
@@ -241,7 +245,10 @@ def test_aprovador_nao_decide_a_propria_solicitacao(cliente_autenticado):
     cursor.close()
     conexao.close()
 
-    aprovacao = aprovar(comprador, solicitacao_id, cotacao["id"])
+    aprovacao = comprador.patch(
+        f"/solicitacoes-compra/{solicitacao_id}/aprovar",
+        json={"cotacao_id": cotacao["id"]}
+    )
     reprovacao = comprador.patch(
         f"/solicitacoes-compra/{solicitacao_id}/reprovar",
         json={"justificativa": "Teste de segregação"}
