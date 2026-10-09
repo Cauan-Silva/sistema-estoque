@@ -2,7 +2,7 @@
 
 Sistema web para controlar o estoque e todo o ciclo de compras: da solicitação de compra às cotações, aprovação, pedido e recebimento, com entrada automática dos materiais no estoque.
 
-O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um **frontend em HTML, CSS e JavaScript**, servido pela própria API. Tem autenticação com JWT, perfis de permissão, auditoria, exportação para Excel e PDF, consulta de preços de mercado, migrations com Alembic, Docker e integração contínua no GitHub Actions.
+O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um **frontend em HTML, CSS e JavaScript**, servido pela própria API. Tem autenticação com JWT, perfis de permissão, notificações, anexos, sugestão automática de compra, leitura de orçamentos com IA, planilha de orçamento, auditoria, exportação para Excel e PDF, consulta de preços, migrations com Alembic, Docker e integração contínua no GitHub Actions.
 
 ## Sumário
 
@@ -15,6 +15,10 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - [Frontend](#frontend)
 - [Perfis e permissões](#perfis-e-permissões)
 - [Consulta de preços](#consulta-de-preços)
+- [Planilha de orçamento](#planilha-de-orçamento)
+- [Leitura de orçamentos recebidos](#leitura-de-orçamentos-recebidos)
+- [Notificações, anexos e sugestão de compra](#notificações-anexos-e-sugestão-de-compra)
+- [Importar histórico de compras](#importar-histórico-de-compras)
 - [Exportação](#exportação)
 - [Logs e auditoria](#logs-e-auditoria)
 - [API](#api)
@@ -29,7 +33,9 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Entradas e saídas de estoque, com bloqueio de saída maior que o disponível
 - Histórico de movimentações com filtros por produto, tipo e período
 - Painel no estilo dashboard: indicadores com ícones, gráfico de linhas das movimentações dos últimos 30 dias, rosca de produtos por categoria, últimas movimentações com o usuário que registrou e produtos abaixo do estoque mínimo
-- Estoque mínimo por produto (padrão 5), usado no filtro de estoque baixo e no painel
+- Estoque mínimo por produto (padrão 5), usado no filtro de estoque baixo, no painel, nas notificações e na sugestão de compra; mínimo 0 marca compras avulsas, que nunca aparecem como estoque baixo
+- Busca de produtos sem diferenciar acentos e maiúsculas, palavra por palavra (ex.: "cabo optico" acha "CABO ÓPTICO DROP")
+- Importação do histórico de compras de um CSV do sistema antigo
 
 **Compras**
 - Fornecedores (ativos e inativos) e formas de pagamento (à vista, dia específico, a prazo de 1X a 12X)
@@ -45,7 +51,8 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Registro da compra com cópia dos valores aprovados
 - Recebimento total ou parcial, com **entrada automática no estoque**
 - Relatório de compras por período, fornecedor, produto e mês, com pontualidade das entregas
-- Consulta de preços: histórico do que já foi pago e cotado, e ofertas do Mercado Livre
+- Consulta de preços: histórico do que já foi pago e cotado, atalhos para o Mercado Livre e o Google Shopping e preços de referência anotados à mão
+- Preço unitário com 4 casas decimais, para itens baratos comprados aos milhares
 
 **Administração e qualidade**
 - Login com JWT, senhas com bcrypt e cinco perfis de permissão
@@ -82,7 +89,8 @@ EM_COTACAO (sem cotações)       → ABERTA
 | Banco | PostgreSQL, Psycopg2, Alembic, SQLAlchemy (só para as migrations) |
 | Segurança | JWT (python-jose), bcrypt |
 | Arquivos | openpyxl (Excel), fpdf2 (PDF) |
-| Integração | HTTPX (Mercado Livre) |
+| Integração | HTTPX (Mercado Livre, Ollama e API da Anthropic) |
+| Leitura de orçamentos | pypdfium2 (texto e imagem de PDFs), Pillow, XML de NF-e |
 | Frontend | HTML, CSS e JavaScript (módulos ES), sem build |
 | Infra | Docker, Docker Compose, GitHub Actions |
 | Testes | Pytest, TestClient do FastAPI |
@@ -158,6 +166,19 @@ New-NetFirewallRule -DisplayName "Sistema Estoque" -Direction Inbound -Protocol 
 
 Nos outros computadores, abra `http://IP-DO-SERVIDOR:8000/app/`. Com Docker, a porta já fica disponível na rede.
 
+### Acesso pela internet (outra cidade)
+
+Sem abrir portas no roteador, com o túnel gratuito da Cloudflare:
+
+```powershell
+winget install --id Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:8000
+```
+
+O terminal mostra um endereço `https://...trycloudflare.com`; quem tiver o link acessa `.../app/`. O endereço muda toda vez que o túnel é reiniciado e só funciona enquanto o PC e o terminal estiverem ligados. Para um endereço fixo, é preciso um domínio próprio na Cloudflare e um túnel nomeado.
+
+Antes de passar o link, lembre que qualquer pessoa com ele vê a tela de entrada: novos cadastros entram como **Consulta**, e o administrador decide o perfil em **Usuários**.
+
 ## Configuração (.env)
 
 | Variável | Obrigatória | Descrição |
@@ -182,6 +203,10 @@ O esquema do banco é controlado pelo **Alembic**, na pasta `migrations/`. A API
 |---|---|
 | `0001_esquema_inicial` | Todas as tabelas do sistema |
 | `0002_credenciais_externas` | Tokens das APIs de preço |
+| `0003_estoque_minimo_e_usuario` | Estoque mínimo por produto e usuário que registrou cada movimentação |
+| `0004_referencias_fornecedor` | Como cada fornecedor chama nossos produtos (para a leitura de orçamentos) e preço unitário com 4 casas |
+| `0005_precos_referencia` | Preços de referência anotados na tela de preços |
+| `0006_anexos` | Anexos das solicitações, guardados no próprio banco (entram no backup) |
 
 Bancos criados antes do Alembic são adotados sem perda de dados: a migração inicial só cria o que estiver faltando.
 
@@ -200,7 +225,11 @@ Para mudar o banco, crie uma migration nova e escreva as alterações em `upgrad
 
 O frontend fica em `frontend/` e é servido pela API em `/app/`. Não há etapa de build nem dependências de npm. O servidor envia os arquivos com `Cache-Control: no-cache`, então depois de uma atualização o navegador carrega a versão nova.
 
-Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Fornecedores, Formas de pagamento, Solicitações, Detalhe da solicitação, Compras, Relatório de compras, Usuários e Auditoria.
+Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Fornecedores, Formas de pagamento, Sugestão de compra, Solicitações, Importar orçamentos, Detalhe da solicitação (com cotações, anexos e recebimentos), Compras, Relatório de compras, Usuários e Auditoria.
+
+- **Painel**: indicadores de produtos, valor do estoque, estoque baixo e movimentações do mês (comparadas aos mesmos dias do mês anterior); valores grandes diminuem a fonte em vez de quebrar a linha.
+- **Sino de notificações**: na barra do topo, com o número de pendências, atualizado a cada minuto e a cada troca de tela.
+- **Relatório de compras**: mostra os 10 maiores de cada resumo, com botão para ver todos.
 
 - **Visual**: barra de navegação escura, cartões brancos e cabeçalhos limpos (a serra ao entardecer fica na tela de entrada), títulos e números em *Roboto* e textos em *Open Sans*.
 - **Temas**: automático (segue o sistema), claro ou escuro, no menu da conta.
@@ -221,6 +250,8 @@ Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Forn
 | Cotações e registro da compra | ✓ | ✓ | | | |
 | Aprovar e reprovar | ✓ | | ✓ | | |
 | Registrar recebimento | ✓ | | | ✓ | |
+| Anexar arquivos à solicitação | ✓ | ✓ | | ✓ | |
+| Criar solicitação pela sugestão de compra | ✓ | ✓ | | ✓ | |
 | Gerenciar usuários e ver a auditoria | ✓ | | | | |
 
 - O primeiro usuário de um banco novo é Administrador; os seguintes entram como Consulta.
@@ -263,17 +294,60 @@ O token do Mercado Livre expira em poucas horas. O sistema renova sozinho e guar
 ### Adicionar outra fonte de preços
 
 As fontes ficam em `backend/precos/`. Crie uma classe que herde de `FontePreco`, com `nome`, `configurada()` e `buscar(termo, limite)` devolvendo um `ResultadoFonte`, e acrescente uma instância à lista `FONTES` em `backend/precos/servico.py`. A tela de preços passa a mostrá-la automaticamente.
+## Planilha de orçamento
 
+No detalhe de uma solicitação, o comprador baixa o **modelo padrão em Excel** com os itens já preenchidos, envia ao fornecedor e importa a planilha devolvida como cotação. Importar de novo a planilha do mesmo fornecedor atualiza a cotação. Todas as cotações podem ser exportadas em Excel ou PDF, lado a lado, para comparar ou arquivar.
 
-## Leitura de orçamentos com IA local (Ollama)
+## Leitura de orçamentos recebidos
 
-A tela **Solicitações > Importar orçamentos** lê PDFs e prints com IA. Para fazer isso de graça e sem enviar os arquivos para fora da empresa:
+A tela **Solicitações > Importar orçamentos** cria a solicitação a partir dos orçamentos que chegam dos fornecedores:
+
+1. Envie os arquivos: PDF, print/foto ou XML de NF-e.
+2. O sistema lê fornecedor, itens, preços, frete e prazo, e sugere o fornecedor e os produtos cadastrados.
+3. Você revisa e corrige as associações. Elas ficam guardadas: na próxima vez, o código ou a descrição do fornecedor já é reconhecido.
+4. A solicitação nasce em cotação, com uma cotação por orçamento e os arquivos originais anexados.
+
+O XML de NF-e é lido sem IA. PDFs e imagens precisam de uma das opções abaixo.
+
+| Opção | Custo | Observação |
+|---|---|---|
+| **Ollama** (IA local) | Grátis | Roda no próprio PC; precisa de uma máquina razoável |
+| **API da Anthropic** | Paga por uso | Mais precisa; os arquivos são enviados à Anthropic. Preencha `ANTHROPIC_API_KEY` |
+
+Com as duas configuradas, `LEITURA_ORCAMENTOS` escolhe qual usar.
+
+### Ollama
+
+Para ler de graça e sem enviar os arquivos para fora da empresa:
 
 1. Instale o [Ollama](https://ollama.com) no PC que roda a API (Windows, macOS ou Linux).
 2. Baixe um modelo que entende imagens: `ollama pull qwen2.5vl:7b` (cerca de 6 GB; precisa de 16 GB de RAM, e uma placa de vídeo deixa bem mais rápido). Em máquinas mais fracas, `qwen2.5vl:3b` é menor e menos preciso.
 3. No `.env`, preencha `OLLAMA_URL=http://localhost:11434` (ou `http://host.docker.internal:11434` se a API roda no Docker) e reinicie a API.
 
-PDFs com texto são enviados ao modelo como texto, o que é rápido e funciona até com modelos só de texto. Prints, fotos e PDFs escaneados vão como imagem. XML de NF-e é lido sem IA.
+PDFs com texto são enviados ao modelo como texto, o que é rápido e funciona até com modelos só de texto. Prints, fotos e PDFs escaneados vão como imagem.
+
+## Notificações, anexos e sugestão de compra
+
+**Notificações**: o sino mostra só o que o perfil de cada um precisa fazer, calculado na hora a partir da situação atual (não há mensagens a marcar como lidas; a pendência some quando a tarefa é feita).
+
+| Pendência | Quem vê |
+|---|---|
+| Solicitações abertas para cotar | Administrador e Comprador |
+| Solicitações em cotação prontas para aprovar | Administrador e Aprovador |
+| Aprovadas aguardando o registro da compra | Administrador e Comprador |
+| Compras a receber (atrasadas em destaque) | Administrador e Almoxarife |
+| Produtos no estoque mínimo ou abaixo | Administrador, Almoxarife e Comprador |
+
+**Anexos**: cada solicitação guarda notas fiscais, propostas, pedidos, boletos e outros arquivos (PDF, imagens, XML, Excel, CSV e Word, até 10 MB). PDFs e imagens abrem no navegador; os demais são baixados. Quem enviou ou um administrador pode excluir.
+
+**Sugestão de compra**: lista o que repor e quanto comprar, e cria a solicitação com os itens marcados.
+
+- Consumo médio: saídas do período escolhido (30 dias a 12 meses) divididas pelo número de dias.
+- Prazo de entrega: média das cotações aprovadas do produto; sem histórico, 7 dias.
+- Em pedido: solicitações abertas, em cotação ou aprovadas, mais o comprado que ainda não chegou.
+- Repor quando: estoque + em pedido ≤ mínimo + consumo durante o prazo de entrega.
+- Quanto comprar: o mínimo mais o consumo do prazo e da cobertura escolhida, e pelo menos um lote do tamanho do mínimo.
+- Produtos com estoque mínimo 0 são compras avulsas e não são sugeridos.
 
 ## Importar histórico de compras
 
@@ -340,7 +414,7 @@ As demais rotas exigem o cabeçalho `Authorization: Bearer <token>`.
 | Sugestão de compra | `GET /sugestoes-compra?dias_consumo=90&cobertura_dias=30&prazo_padrao=7&todos=false` |
 | Compras | `POST/GET /solicitacoes-compra/{id}/compra`, `GET /compras`, `GET /compras/{id}` |
 | Recebimentos | `POST/GET /solicitacoes-compra/{id}/compra/recebimentos` |
-| Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}` |
+| Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}`, `POST /precos/produtos/{id}/referencias`, `DELETE /precos/referencias/{referencia_id}` |
 | Exportação | `GET /exportacoes/{recurso}?formato=xlsx\|pdf` |
 | Usuários | `GET /usuarios`, `PATCH /usuarios/{id}` |
 | Auditoria | `GET /auditoria` |
@@ -393,6 +467,8 @@ Recebimento parcial (sem `itens`, recebe tudo o que está pendente):
 - Cada solicitação aprovada gera no máximo uma compra, que guarda uma cópia dos valores aprovados.
 - Recebimentos não passam da quantidade pendente e entram no estoque na mesma transação.
 - A solicitação vira `RECEBIDA` quando todos os itens chegam.
+- Recebimentos com data passada entram no estoque com essa data.
+- Anexos aceitam só tipos conhecidos e até 10 MB; só PDFs e imagens abrem no navegador.
 
 **Segurança**
 - Senhas guardadas com bcrypt; o login inválido não diz se o erro foi no e-mail ou na senha.
@@ -413,7 +489,11 @@ sistema-estoque/
 │   ├── permissoes.py             perfis e permissões
 │   ├── logs.py                   configuração dos logs
 │   ├── exportacao.py             geração de Excel e PDF
-│   ├── precos/                   fontes de preço e histórico
+│   ├── planilha_orcamento.py     modelo, importação e exportação de cotações
+│   ├── busca.py                  busca sem acentos, palavra por palavra
+│   ├── orcamentos/               leitura de orçamentos (NF-e, PDF, Ollama, Anthropic)
+│   ├── precos/                   fontes de preço, histórico e preços de referência
+│   ├── importacao/               importação do histórico de compras (CSV)
 │   ├── repositorio*.py           acesso ao banco
 │   ├── routes/                   rotas da API
 │   ├── schemas/                  validação com Pydantic
@@ -436,7 +516,9 @@ Os testes usam um banco PostgreSQL separado, `sistema_estoque_test`:
 python -m pytest -v
 ```
 
-São cerca de 330 casos de teste, cobrindo estoque, todo o fluxo de compras, permissões, auditoria, exportação, migrations e a consulta de preços. As chamadas ao Mercado Livre são simuladas, sem acessar a internet.
+São cerca de 400 casos de teste, cobrindo estoque, todo o fluxo de compras, permissões, notificações, anexos, sugestão de compra, planilha e leitura de orçamentos, importação do histórico, auditoria, exportação, migrations e a consulta de preços. As chamadas ao Mercado Livre, ao Ollama e à Anthropic são simuladas, sem acessar a internet.
+
+O sistema também foi testado com um histórico real de 509 pedidos: estoque, totais e datas conferiram com o CSV original.
 
 O GitHub Actions roda dois jobs a cada push e pull request na `main`:
 
@@ -445,10 +527,10 @@ O GitHub Actions roda dois jobs a cada push e pull request na `main`:
 
 ## Possíveis evoluções
 
-Todos os itens planejados foram concluídos. Ideias para o futuro:
+Já concluídos: notificações para quem precisa agir, anexos de notas fiscais e propostas, sugestão automática de compra, leitura de orçamentos com IA, planilha de orçamento e importação do histórico. Ideias para o futuro:
 
 - Recuperação de senha por e-mail
-- Notificações para quem precisa agir (aprovar, comprar, receber)
-- Anexar notas fiscais e propostas às compras
-- Sugestão automática de compra a partir do estoque mínimo e do consumo médio
-- Outras fontes de preço além do Mercado Livre
+- Notificações por e-mail ou WhatsApp, além do sino
+- Opção para desativar o cadastro público, quando o sistema estiver na internet
+- Endereço fixo na internet (domínio próprio com túnel nomeado da Cloudflare)
+- Outras fontes de preço automáticas além do Mercado Livre
