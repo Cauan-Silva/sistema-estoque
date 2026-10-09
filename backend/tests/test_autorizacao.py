@@ -102,6 +102,7 @@ ROTAS_PROTEGIDAS = [
     ("post", "/solicitacoes-compra/1/compra/recebimentos"),
     ("get", "/solicitacoes-compra/1/compra/recebimentos"),
     ("get", "/relatorios/compras"),
+    ("get", "/notificacoes"),
     ("get", "/orcamentos/configuracao"),
     ("post", "/orcamentos/ler"),
     ("post", "/orcamentos/solicitacao"),
