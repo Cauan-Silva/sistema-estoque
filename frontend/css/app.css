@@ -55,8 +55,8 @@
   --cor-5: #e87ba4;
   --cor-6: #eda100;
 
-  --fonte: "Instrument Sans", system-ui, sans-serif;
-  --fonte-titulo: "Young Serif", Georgia, serif;
+  --fonte: "Open Sans", system-ui, sans-serif;
+  --fonte-titulo: "Roboto", system-ui, sans-serif;
 
   --margem: clamp(16px, 4vw, 48px);
   --largura: 1240px;
@@ -183,7 +183,7 @@ body {
 h1,
 h2 {
   font-family: var(--fonte-titulo);
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1.1;
   margin: 0;
 }
@@ -312,6 +312,7 @@ code {
 
 .marca-nome {
   font-family: var(--fonte-titulo);
+  font-weight: 700;
   font-size: 1.2rem;
   white-space: nowrap;
 }
@@ -969,6 +970,7 @@ tfoot td {
 .indicador dd {
   margin: 6px 0 0;
   font-family: var(--fonte-titulo);
+  font-weight: 700;
   font-size: 1.75rem;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -1145,6 +1147,7 @@ tfoot td {
 
 .destaque .numero {
   font-family: var(--fonte-titulo);
+  font-weight: 700;
   font-size: 1.35rem;
 }
 
@@ -1487,7 +1490,7 @@ tr.selecionavel:focus-visible {
 
 .grafico figcaption h3 {
   font-family: var(--fonte-titulo);
-  font-weight: 400;
+  font-weight: 700;
   font-size: 1.15rem;
 }
 
@@ -2085,6 +2088,7 @@ tr.selecionavel:focus-visible {
 .cartao-valor {
   margin: 0;
   font-family: var(--fonte-titulo);
+  font-weight: 700;
   font-size: clamp(1.6rem, 2.6vw, 2rem);
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
@@ -2153,6 +2157,7 @@ tr.selecionavel:focus-visible {
   border-radius: 50%;
   background: var(--superficie);
   font-family: var(--fonte-titulo);
+  font-weight: 700;
   font-size: 1.2rem;
 }
 

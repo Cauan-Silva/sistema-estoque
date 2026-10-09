@@ -193,7 +193,7 @@ O frontend fica em `frontend/` e é servido pela API em `/app/`. Não há etapa 
 
 Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Fornecedores, Formas de pagamento, Solicitações, Detalhe da solicitação, Compras, Relatório de compras, Usuários e Auditoria.
 
-- **Visual**: céu ao entardecer com serras em camadas no topo de cada tela, títulos em *Young Serif* e textos em *Instrument Sans*.
+- **Visual**: céu ao entardecer com serras em camadas no topo de cada tela, títulos e números em *Roboto* e textos em *Open Sans*.
 - **Temas**: automático (segue o sistema), claro ou escuro, no menu da conta.
 - **Status**: cores do código de fibra óptica, sempre acompanhadas do nome do status.
 - **Gráficos**: feitos em HTML e CSS, com cores validadas para daltonismo nos dois temas.
