@@ -236,7 +236,7 @@ O formulário de cotação também mostra o último preço pago e a média ao la
 
 ### Ativar o Mercado Livre
 
-1. Crie um aplicativo em [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br). Cadastre um endereço de retorno (*redirect URI*) com `https`, por exemplo `https://www.google.com.br`.
+1. Crie um aplicativo em [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br). Cadastre como endereço de retorno (*redirect URI*) `https://httpbin.org/get`: ele mostra o código na tela. Evite `https://www.google.com.br`, porque o Google redireciona e apaga o código do endereço.
 2. Preencha no `.env`: `MERCADO_LIVRE_CLIENT_ID`, `MERCADO_LIVRE_CLIENT_SECRET` e `MERCADO_LIVRE_REDIRECT_URI`.
 3. Rode a autorização uma vez:
 
@@ -246,7 +246,7 @@ O formulário de cotação também mostra o último preço pago e a média ao la
    docker compose exec api python -m backend.precos.autorizar_mercado_livre
    ```
 
-   Abra o endereço que aparecer, autorize o aplicativo e cole o endereço de retorno (o que tem `?code=`).
+   Abra o endereço que aparecer e autorize o aplicativo. A página do httpbin mostra `"code": "TG-..."`; cole esse código no terminal (vale por poucos minutos).
 
 O token do Mercado Livre expira em poucas horas. O sistema renova sozinho e guarda o token novo no banco, na tabela `credenciais_externas`. Se a autorização for revogada, a tela de preços avisa para rodar o passo 3 de novo. Para um teste rápido sem OAuth, também é possível colocar um token pronto em `MERCADO_LIVRE_TOKEN`, mas ele para de funcionar quando expira.
 

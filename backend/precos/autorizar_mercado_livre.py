@@ -48,7 +48,7 @@ def main():
     print("1. Abra este endereço no navegador e autorize o aplicativo:\n")
     print(f"   {endereco}\n")
     print("2. Você será levado para o endereço de retorno do aplicativo.")
-    print("   Copie o endereço completo da barra do navegador (ele contém ?code=...).\n")
+    print("   Copie o código TG-... que aparece (no httpbin.org, em \"code\") ou o endereço completo com ?code=.\n")
 
     codigo = extrair_codigo(input("Cole aqui o endereço ou só o código: "))
 
