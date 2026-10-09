@@ -1,6 +1,7 @@
 import { api, listarTodos } from "../api.js";
 import {
   abrirDialogo,
+  cabecalho,
   abrirFormulario,
   confirmar,
   etiquetaStatus,
@@ -654,19 +655,18 @@ export async function telaSolicitacao(area, id) {
         ]
       : [];
 
+  const topo = cabecalho(
+    `Solicitação Nº ${solicitacao.id}`,
+    etiquetaStatus(status),
+    ...acoes
+  );
+
+  topo
+    .querySelector(".cabecalho-texto")
+    .prepend(h("a", { class: "voltar", href: "#/solicitacoes" }, "Voltar para solicitações"));
+
   const secoes = [
-    h("a", { class: "voltar", href: "#/solicitacoes" }, "Voltar para solicitações"),
-    h(
-      "header",
-      { class: "cabecalho" },
-      h(
-        "div",
-        {},
-        h("h1", {}, `Solicitação Nº ${solicitacao.id}`),
-        h("p", {}, etiquetaStatus(status))
-      ),
-      acoes.length ? h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, acoes) : null
-    ),
+    topo,
     etapas(solicitacao, cotacoes.length, compra),
     proximoPasso(),
     ficha([

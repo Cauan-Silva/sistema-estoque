@@ -187,12 +187,16 @@ export function barras({ titulo, descricao, itens, formatar, cor = "var(--grafic
           h(
             "div",
             { class: "barra-trilho" },
-            comDica(
-              h("div", {
-                class: "barra-valor",
-                style: { width: `${Math.max((item.valor / maximo) * 100, item.valor ? 1 : 0)}%`, background: cor },
-              }),
-              `${item.rotulo}: ${formatar(item.valor)}`
+            h(
+              "div",
+              { class: "barra-area" },
+              comDica(
+                h("div", {
+                  class: "barra-valor",
+                  style: { width: `${Math.max((item.valor / maximo) * 100, item.valor ? 1 : 0)}%`, background: cor },
+                }),
+                `${item.rotulo}: ${formatar(item.valor)}`
+              )
             ),
             h("span", { class: "valor-barra" }, formatar(item.valor))
           )

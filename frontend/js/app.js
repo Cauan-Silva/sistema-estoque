@@ -22,7 +22,6 @@ const MENU = [
   {
     grupo: "Estoque",
     itens: [
-      { caminho: "#/painel", texto: "Painel", cor: "var(--fibra-azul)" },
       { caminho: "#/produtos", texto: "Produtos", cor: "var(--fibra-azul)" },
       { caminho: "#/categorias", texto: "Categorias", cor: "var(--fibra-azul)" },
       { caminho: "#/movimentacoes", texto: "Movimentações", cor: "var(--fibra-verde)" },
@@ -59,13 +58,16 @@ let usuarioAtual = null;
 let estrutura = null;
 let areaConteudo = null;
 
-function marcaCabos() {
+function marca() {
   return h(
-    "span",
-    { class: "marca-cabos", "aria-hidden": "true" },
-    h("span", { style: { background: "var(--fibra-azul)" } }),
-    h("span", { style: { background: "var(--fibra-laranja)" } }),
-    h("span", { style: { background: "var(--fibra-verde)" } })
+    "a",
+    { class: "marca", href: "#/painel" },
+    h(
+      "span",
+      { class: "marca-icone", "aria-hidden": "true" },
+      h("span", { class: "marca-sol" })
+    ),
+    h("span", { class: "marca-nome" }, "Estoque", h("em", {}, " & Compras"))
   );
 }
 
@@ -77,36 +79,88 @@ function sair() {
   window.location.hash = "#/entrar";
 }
 
+function fecharMenus(excecao) {
+  estrutura?.querySelectorAll("details[open]").forEach((detalhe) => {
+    if (detalhe !== excecao) detalhe.open = false;
+  });
+}
+
 function montarEstrutura() {
+  const secoes = [
+    ...MENU,
+    {
+      grupo: "Administração",
+      itens: [
+        { caminho: "#/usuarios", texto: "Usuários", permissao: "usuarios.gerenciar" },
+        { caminho: "#/auditoria", texto: "Auditoria", permissao: "auditoria.ver" },
+      ],
+    },
+  ]
+    .map((secao) => ({ ...secao, itens: secao.itens.filter((item) => !item.permissao || pode(item.permissao)) }))
+    .filter((secao) => secao.itens.length);
+
+  const aoNavegar = () => {
+    fecharMenus();
+    estrutura.classList.remove("menu-aberto");
+  };
+
+  const grupo = (titulo, conteudo, classe = "") => {
+    const detalhe = h(
+      "details",
+      { class: `grupo-menu ${classe}` },
+      h("summary", {}, titulo),
+      h("div", { class: "painel-menu" }, conteudo)
+    );
+
+    detalhe.addEventListener("toggle", () => {
+      if (detalhe.open) fecharMenus(detalhe);
+    });
+
+    return detalhe;
+  };
+
   const menu = h(
     "nav",
-    { class: "menu", "aria-label": "Principal" },
+    { class: "menu", id: "menu-principal", "aria-label": "Principal" },
+    h("a", { class: "link-menu", href: "#/painel", onClick: aoNavegar }, "Painel"),
+    secoes.map((secao) =>
+      grupo(
+        secao.grupo,
+        secao.itens.map((item) => h("a", { href: item.caminho, onClick: aoNavegar }, item.texto))
+      )
+    )
+  );
+
+  const conta = grupo(
+    h(
+      "span",
+      { class: "conta-resumo" },
+      h("span", { class: "conta-inicial", "aria-hidden": "true" }, usuarioAtual.nome.trim().charAt(0).toUpperCase()),
+      h("span", { class: "conta-nome" }, usuarioAtual.nome)
+    ),
     [
-      ...MENU,
-      {
-        grupo: "Administração",
-        itens: [
-          { caminho: "#/usuarios", texto: "Usuários", cor: "var(--fibra-ardosia)", permissao: "usuarios.gerenciar" },
-          { caminho: "#/auditoria", texto: "Auditoria", cor: "var(--fibra-ardosia)", permissao: "auditoria.ver" },
-        ],
+      h("strong", {}, usuarioAtual.nome),
+      h("span", { class: "suave" }, usuarioAtual.email),
+      h("span", { class: "perfil-usuario" }, NOMES_PERFIS[usuarioAtual.perfil] || usuarioAtual.perfil),
+      h("span", { class: "rotulo-tema" }, "Tema"),
+      seletorTema(),
+      h("button", { class: "sair", onClick: sair }, "Sair"),
+    ],
+    "conta"
+  );
+
+  const botaoMenu = h(
+    "button",
+    {
+      class: "botao-menu",
+      "aria-controls": "menu-principal",
+      "aria-expanded": "false",
+      onClick: () => {
+        const aberto = estrutura.classList.toggle("menu-aberto");
+        botaoMenu.setAttribute("aria-expanded", String(aberto));
       },
-    ]
-      .map((secao) => ({ ...secao, itens: secao.itens.filter((item) => !item.permissao || pode(item.permissao)) }))
-      .filter((secao) => secao.itens.length)
-      .map((secao) => [
-      h("div", { class: "menu-grupo" }, secao.grupo),
-      secao.itens.map((item) =>
-        h(
-          "a",
-          {
-            href: item.caminho,
-            style: { "--cor-menu": item.cor },
-            onClick: () => estrutura.classList.remove("menu-aberto"),
-          },
-          item.texto
-        )
-      ),
-    ])
+    },
+    "Menu"
   );
 
   areaConteudo = h("main", { class: "conteudo", id: "conteudo", tabindex: "-1" });
@@ -114,45 +168,42 @@ function montarEstrutura() {
   estrutura = h(
     "div",
     { class: "estrutura" },
-    h(
-      "div",
-      { class: "topo-movel" },
-      h("span", { class: "marca" }, marcaCabos(), "Estoque"),
-      h(
-        "button",
-        {
-          class: "pequeno",
-          "aria-label": "Abrir menu",
-          onClick: () => estrutura.classList.toggle("menu-aberto"),
-        },
-        "Menu"
-      )
-    ),
-    h(
-      "aside",
-      { class: "lateral" },
-      h("div", { class: "marca" }, marcaCabos(), "Estoque e Compras"),
-      menu,
-      h(
-        "div",
-        { class: "usuario" },
-        h("strong", {}, usuarioAtual.nome),
-        h("span", { class: "suave" }, usuarioAtual.email),
-        h("span", { class: "perfil-usuario" }, NOMES_PERFIS[usuarioAtual.perfil] || usuarioAtual.perfil),
-        h("div", {}, h("button", { class: "pequeno", onClick: sair }, "Sair")),
-        seletorTema()
-      )
-    ),
+    h("a", { class: "pular", href: "#conteudo", onClick: (e) => { e.preventDefault(); areaConteudo.focus(); } }, "Pular para o conteúdo"),
+    h("header", { class: "barra-topo" }, marca(), menu, h("div", { class: "barra-direita" }, conta, botaoMenu)),
     areaConteudo
   );
+
+  document.addEventListener("click", (evento) => {
+    if (estrutura && !evento.target.closest(".grupo-menu")) fecharMenus();
+  });
+
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape") fecharMenus();
+  });
 
   raiz.replaceChildren(estrutura);
 }
 
 function marcarMenu(hash) {
-  estrutura.querySelectorAll(".menu a").forEach((link) => {
-    const ativo = hash === link.getAttribute("href") || hash.startsWith(`${link.getAttribute("href")}/`);
-    if (ativo) {
+  estrutura.querySelectorAll(".menu .grupo-menu").forEach((grupo) => {
+    let algumAtivo = false;
+
+    grupo.querySelectorAll("a").forEach((link) => {
+      const ativo = hash === link.getAttribute("href") || hash.startsWith(`${link.getAttribute("href")}/`);
+      algumAtivo ||= ativo;
+
+      if (ativo) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+
+    grupo.classList.toggle("ativo", algumAtivo);
+  });
+
+  estrutura.querySelectorAll(".menu > a").forEach((link) => {
+    if (hash === link.getAttribute("href")) {
       link.setAttribute("aria-current", "page");
     } else {
       link.removeAttribute("aria-current");

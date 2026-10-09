@@ -114,12 +114,73 @@ export function avisar(mensagem, tipo = "sucesso") {
 
 /* ---------- Blocos ---------- */
 
+const SVG = "http://www.w3.org/2000/svg";
+
+function svg(tag, atributos = {}, ...filhos) {
+  const elemento = document.createElementNS(SVG, tag);
+  Object.entries(atributos).forEach(([chave, valor]) => elemento.setAttribute(chave, valor));
+  filhos.forEach((filho) => elemento.append(filho));
+  return elemento;
+}
+
+/*
+ * Serras ao entardecer, em camadas. A camada da frente usa a cor de fundo
+ * da página, então as montanhas "viram" o conteúdo logo abaixo.
+ * variante "cena" é a versão alta usada na tela de entrada.
+ */
+export function paisagem(variante = "faixa") {
+  const cena = variante === "cena";
+  const altura = cena ? 420 : 160;
+
+  const camadas = cena
+    ? [
+        ["monte-fundo", "M0 250 L120 190 L210 220 L330 120 L430 175 L520 140 L640 60 L760 150 L860 110 L980 170 L1100 95 L1210 160 L1330 120 L1440 170 L1440 420 L0 420 Z"],
+        ["monte-meio", "M0 300 L140 250 L260 285 L380 215 L500 270 L620 235 L760 300 L900 240 L1040 290 L1180 230 L1300 270 L1440 245 L1440 420 L0 420 Z"],
+        ["monte-perto", "M0 350 L180 320 L320 345 L470 305 L640 350 L820 315 L1000 355 L1160 320 L1320 345 L1440 325 L1440 420 L0 420 Z"],
+        ["monte-chao", "M0 395 L240 380 L520 398 L800 382 L1080 400 L1300 385 L1440 395 L1440 420 L0 420 Z"],
+      ]
+    : [
+        ["monte-fundo", "M0 95 L110 70 L200 82 L320 40 L420 66 L540 52 L660 18 L780 58 L900 44 L1010 66 L1130 32 L1250 60 L1360 46 L1440 62 L1440 160 L0 160 Z"],
+        ["monte-meio", "M0 112 L150 92 L280 108 L420 80 L560 104 L700 88 L840 112 L980 90 L1120 110 L1260 86 L1380 100 L1440 94 L1440 160 L0 160 Z"],
+        ["monte-chao", "M0 140 L220 128 L480 142 L760 126 L1040 142 L1280 130 L1440 138 L1440 160 L0 160 Z"],
+      ];
+
+  const passaros = cena
+    ? [[560, 92], [592, 80], [620, 98], [648, 74], [684, 88], [716, 70]]
+    : [[1040, 26], [1066, 18], [1092, 30]];
+
+  return svg(
+    "svg",
+    {
+      class: `paisagem paisagem-${variante}`,
+      viewBox: `0 0 1440 ${altura}`,
+      preserveAspectRatio: "xMidYMax slice",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    ...camadas.map(([classe, d]) => svg("path", { class: classe, d })),
+    ...passaros.map(([x, y]) =>
+      svg("path", { class: "passaro", d: `M${x - 7} ${y - 3} Q${x - 3} ${y - 6} ${x} ${y} Q${x + 3} ${y - 6} ${x + 7} ${y - 3}` })
+    )
+  );
+}
+
 export function cabecalho(titulo, descricao, ...acoes) {
   return h(
     "header",
     { class: "cabecalho" },
-    h("div", {}, h("h1", {}, titulo), descricao ? h("p", {}, descricao) : null),
-    acoes.length ? h("div", { class: "acoes-cabecalho" }, acoes) : null
+    h(
+      "div",
+      { class: "cabecalho-conteudo" },
+      h(
+        "div",
+        { class: "cabecalho-texto" },
+        h("h1", {}, titulo),
+        descricao ? h("p", {}, descricao) : null
+      ),
+      acoes.filter(Boolean).length ? h("div", { class: "acoes-cabecalho" }, acoes) : null
+    ),
+    paisagem()
   );
 }
 

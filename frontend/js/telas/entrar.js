@@ -1,5 +1,5 @@
 import { api, salvarToken } from "../api.js";
-import { h } from "../ui.js";
+import { h, paisagem } from "../ui.js";
 import { seletorTema } from "../tema.js";
 
 export function telaEntrar(raiz, aoEntrar) {
@@ -84,27 +84,25 @@ export function telaEntrar(raiz, aoEntrar) {
     }
   });
 
-  const cores = ["azul", "laranja", "verde", "marrom", "ardosia", "vermelho"];
-
   raiz.replaceChildren(
     h(
       "div",
       { class: "entrada" },
+      h("div", { class: "entrada-ceu", "aria-hidden": "true" }),
+      paisagem("cena"),
+      h(
+        "header",
+        { class: "entrada-topo" },
+        h("span", { class: "marca" }, h("span", { class: "marca-icone" }, h("span", { class: "marca-sol" })), h("span", { class: "marca-nome" }, "Estoque", h("em", {}, " & Compras")))
+      ),
       h(
         "section",
-        { class: "entrada-lado" },
-        h("h1", {}, "Estoque e Compras"),
-        h(
-          "div",
-          { class: "feixe", "aria-hidden": "true" },
-          cores.map((cor, indice) =>
-            h("span", { style: { background: `var(--fibra-${cor})`, width: `${92 - indice * 9}%` } })
-          )
-        ),
+        { class: "entrada-chamada" },
+        h("h1", {}, "Estoque"),
         h(
           "p",
           {},
-          "Controle o que entra e sai do estoque e acompanhe cada compra, da solicitação ao pedido."
+          "Do pedido de compra à entrada no estoque: cotações, aprovação, recebimento e relatórios num só lugar."
         )
       ),
       h("section", { class: "entrada-form" }, formulario)
