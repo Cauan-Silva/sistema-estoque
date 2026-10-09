@@ -50,6 +50,9 @@ from backend.routes.auditoria import (
 from backend.routes.exportacoes import (
     router as exportacoes_router
 )
+from backend.routes.precos import (
+    router as precos_router
+)
 
 
 configurar_logs()
@@ -119,6 +122,7 @@ app.include_router(compras_router)
 app.include_router(formas_pagamento_router)
 app.include_router(auditoria_router)
 app.include_router(exportacoes_router)
+app.include_router(precos_router)
 
 
 PASTA_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
