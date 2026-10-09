@@ -170,6 +170,9 @@ export async function telaSolicitacoes(area) {
     cabecalho(
       "Solicitações de compra",
       "Cada solicitação passa por cotação, aprovação e registro da compra.",
+      podeCriar && pode("cotacoes.editar")
+        ? h("a", { class: "botao", href: "#/solicitacoes/importar" }, "Importar orçamentos")
+        : null,
       podeCriar ? h("button", { class: "primario", disabled: !produtos.length, onClick: nova }, "Criar solicitação") : null
     ),
     h(

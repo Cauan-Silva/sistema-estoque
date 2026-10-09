@@ -36,6 +36,7 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Solicitações de compra com vários itens
 - Cotações por fornecedor, com preços por item, frete, prazo, validade e forma de pagamento
 - Planilha de orçamento: modelo padrão em Excel com os itens da solicitação, importação da planilha preenchida como cotação e exportação das cotações em Excel ou PDF
+- Solicitação a partir de orçamentos: envie os PDFs, prints ou XML de NF-e recebidos dos fornecedores; o sistema lê cada um, sugere fornecedor e produtos (e lembra as associações para a próxima vez), e a solicitação já nasce com as cotações
 - Comparação de cotações: menor total, menor prazo, menor frete e melhor preço de cada produto
 - Aprovação e reprovação com justificativa; só o Administrador pode decidir sobre a própria solicitação
 - Registro da compra com cópia dos valores aprovados
@@ -164,6 +165,8 @@ Nos outros computadores, abra `http://IP-DO-SERVIDOR:8000/app/`. Com Docker, a p
 | `LOG_DIR` | Não | Pasta dos arquivos de log (padrão: `logs`) |
 | `API_PORT` | Não | Porta da API no Docker (padrão: 8000) |
 | `MERCADO_LIVRE_CLIENT_ID`, `MERCADO_LIVRE_CLIENT_SECRET`, `MERCADO_LIVRE_REDIRECT_URI` | Não | Consulta de preços no Mercado Livre |
+| `ANTHROPIC_API_KEY` | Não | Leitura de orçamentos em PDF e imagem. Sem ela, só XML de NF-e é lido. Os arquivos são enviados à API da Anthropic |
+| `ANTHROPIC_MODEL` | Não | Modelo usado na leitura (padrão `claude-sonnet-5-5`) |
 
 O `.env` contém senhas e não vai para o GitHub. O modelo com todas as variáveis está em `.env.example`.
 
@@ -295,6 +298,7 @@ As demais rotas exigem o cabeçalho `Authorization: Bearer <token>`.
 | Solicitações | `GET/POST /solicitacoes-compra`, `GET/PUT /solicitacoes-compra/{id}`, `PATCH .../cancelar`, `.../aprovar`, `.../reprovar` |
 | Cotações | `GET/POST /solicitacoes-compra/{id}/cotacoes`, `GET/PUT/DELETE .../cotacoes/{cotacao_id}`, `GET .../cotacoes/comparacao` |
 | Planilha de orçamento | `GET .../cotacoes/modelo`, `POST .../cotacoes/importar` (arquivo .xlsx; `substituir=true` atualiza a cotação do mesmo fornecedor), `GET .../cotacoes/exportar?formato=xlsx\|pdf`, `GET .../cotacoes/{cotacao_id}/planilha` |
+| Orçamentos recebidos | `GET /orcamentos/configuracao`, `POST /orcamentos/ler` (PDF, imagem ou XML; não grava nada), `POST /orcamentos/solicitacao` (cria a solicitação e as cotações numa transação) |
 | Compras | `POST/GET /solicitacoes-compra/{id}/compra`, `GET /compras`, `GET /compras/{id}` |
 | Recebimentos | `POST/GET /solicitacoes-compra/{id}/compra/recebimentos` |
 | Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}` |

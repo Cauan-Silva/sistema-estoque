@@ -12,6 +12,7 @@ import { telaMovimentacoes } from "./telas/movimentacoes.js";
 import { telaFornecedores } from "./telas/fornecedores.js";
 import { telaSolicitacoes } from "./telas/solicitacoes.js";
 import { telaSolicitacao } from "./telas/solicitacao.js";
+import { telaImportarOrcamentos } from "./telas/importar_orcamentos.js";
 import { telaCompras } from "./telas/compras.js";
 import { telaRelatorioCompras } from "./telas/relatorio_compras.js";
 import { telaFormasPagamento } from "./telas/formas_pagamento.js";
@@ -46,6 +47,7 @@ const ROTAS = [
   { padrao: /^#\/movimentacoes$/, tela: telaMovimentacoes },
   { padrao: /^#\/fornecedores$/, tela: telaFornecedores },
   { padrao: /^#\/solicitacoes$/, tela: telaSolicitacoes },
+  { padrao: /^#\/solicitacoes\/importar$/, tela: telaImportarOrcamentos, permissao: "cotacoes.editar" },
   { padrao: /^#\/solicitacoes\/(\d+)$/, tela: telaSolicitacao },
   { padrao: /^#\/compras$/, tela: telaCompras },
   { padrao: /^#\/relatorio-compras$/, tela: telaRelatorioCompras },

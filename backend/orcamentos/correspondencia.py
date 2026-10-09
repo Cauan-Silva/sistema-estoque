@@ -9,7 +9,7 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
-LIMIAR_SEMELHANCA = 0.5
+LIMIAR_SEMELHANCA = 0.6
 
 PALAVRAS_IGNORADAS = {
     "de", "da", "do", "das", "dos", "e", "com", "para", "em", "a", "o", "un", "und", "pc", "pcs", "cx",

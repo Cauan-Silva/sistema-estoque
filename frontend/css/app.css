@@ -2626,3 +2626,210 @@ tr.selecionavel:focus-visible {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ---------- Solicitação a partir de orçamentos ---------- */
+
+.aviso-configuracao {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--raio-medio);
+  border: 1px solid color-mix(in srgb, var(--fibra-amarelo) 45%, var(--linha));
+  background: color-mix(in srgb, var(--fibra-amarelo) 10%, var(--superficie));
+}
+
+.zona-envio {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 32px 20px;
+  margin-bottom: 24px;
+  text-align: center;
+  border: 2px dashed var(--linha-forte);
+  border-radius: var(--raio-grande);
+  background: var(--superficie);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.zona-envio:hover,
+.zona-envio.arrastando,
+.zona-envio:focus-within {
+  border-color: var(--cor-4);
+  background: color-mix(in srgb, var(--cor-4) 6%, var(--superficie));
+}
+
+.zona-icone {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cor-4) 13%, var(--superficie));
+  color: var(--cor-4);
+}
+
+.zona-icone .icone {
+  width: 26px;
+  height: 26px;
+}
+
+.lista-orcamentos > .bloco {
+  margin-bottom: 20px;
+}
+
+.titulo-orcamento {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.titulo-orcamento h2 {
+  overflow-wrap: anywhere;
+}
+
+.selo-origem,
+.selo-sugestao {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--cor-1) 13%, var(--superficie));
+  color: color-mix(in srgb, var(--cor-1) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.selo-sugestao {
+  margin-top: 6px;
+  background: color-mix(in srgb, var(--fibra-amarelo) 16%, var(--superficie));
+  color: color-mix(in srgb, var(--fibra-amarelo) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.selo-sugestao[data-motivo="referencia"] {
+  background: color-mix(in srgb, var(--fibra-verde) 14%, var(--superficie));
+  color: color-mix(in srgb, var(--fibra-verde) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.orcamento.lendo .lendo-texto {
+  color: var(--tinta-suave);
+  animation: pulsar 1.2s ease-in-out infinite;
+}
+
+@keyframes pulsar {
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orcamento.lendo .lendo-texto { animation: none; }
+}
+
+.erro-texto {
+  color: var(--fibra-vermelho);
+  font-weight: 600;
+  margin: 0;
+}
+
+.avisos-orcamento {
+  margin: 0 0 16px;
+  padding: 10px 14px 10px 32px;
+  border-radius: var(--raio-medio);
+  background: color-mix(in srgb, var(--fibra-amarelo) 10%, var(--superficie));
+  font-size: 0.9rem;
+}
+
+.campos-orcamento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.campos-orcamento label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  min-width: 0;
+}
+
+.dica-campo {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+  overflow-wrap: anywhere;
+}
+
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cor-4);
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.tabela-orcamento td {
+  vertical-align: top;
+}
+
+.descricao-fornecedor {
+  display: block;
+  max-width: 46ch;
+}
+
+.codigo-fornecedor {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
+.entrada-preco,
+.entrada-quantidade {
+  width: 120px;
+  text-align: right;
+}
+
+.celula-produto {
+  min-width: 260px;
+}
+
+.escolha-produto {
+  display: flex;
+  gap: 6px;
+}
+
+.escolha-produto select {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-ignorado td:not(.celula-produto) {
+  opacity: 0.55;
+}
+
+.campo-largo {
+  grid-column: 1 / -1;
+}
+
+.dica-campo button.link {
+  margin-left: 6px;
+}
+
+.resumo-orcamentos .quadro {
+  margin-bottom: 16px;
+}
+
+.observacao-solicitacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.acoes-final {
+  display: flex;
+  justify-content: flex-end;
+}
