@@ -274,6 +274,21 @@ A tela **Solicitações > Importar orçamentos** lê PDFs e prints com IA. Para 
 3. No `.env`, preencha `OLLAMA_URL=http://localhost:11434` (ou `http://host.docker.internal:11434` se a API roda no Docker) e reinicie a API.
 
 PDFs com texto são enviados ao modelo como texto, o que é rápido e funciona até com modelos só de texto. Prints, fotos e PDFs escaneados vão como imagem. XML de NF-e é lido sem IA.
+
+## Importar histórico de compras
+
+Carrega um CSV de "Itens do Pedido de Compra" (exportado do sistema antigo) passando por todo o fluxo: solicitação, cotação, aprovação, compra e recebimento, com as datas originais. Fornecedores, categorias, produtos e formas de pagamento que faltarem são criados. Solicitantes e aprovadores do histórico viram usuários desativados.
+
+```bash
+pg_dump -U postgres sistema_estoque > backup.sql   # recomendado antes
+python -m backend.importacao.historico_compras pedidos.csv --email seu@email.com --estoque-minimo --forcar
+```
+
+- `--estoque-minimo`: define o mínimo dos itens do grupo "Estoque" pela média de compras.
+- `--simular-consumo`: cria saídas **fictícias** para o painel e a sugestão de compra terem dados. Use só para demonstração.
+- `--forcar`: importa mesmo que o banco já tenha solicitações.
+- `--banco nome`: importa em outro banco (criado se não existir), sem mexer no principal.
+
 ## Exportação
 
 Os botões **Excel** e **PDF** ficam no topo de Produtos, Movimentações, Fornecedores, Compras e Relatório de compras, e exportam exatamente o que está filtrado.
