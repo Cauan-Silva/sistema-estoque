@@ -39,9 +39,10 @@ router = APIRouter(
     response_model=ResumoEstoqueResposta
 )
 def obter_resumo(
-    limite_estoque: int = Query(
-        default=5,
-        ge=0
+    limite_estoque: int | None = Query(
+        default=None,
+        ge=0,
+        description="Sem valor, usa o estoque mínimo de cada produto."
     )
 ):
     resumo = obter_resumo_estoque(
