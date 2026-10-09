@@ -15,7 +15,11 @@ from backend.precos.credenciais import (
 
 logger = logging.getLogger(__name__)
 
-URL_BUSCA = "https://api.mercadolibre.com/sites/MLB/search"
+URL_API = "https://api.mercadolibre.com"
+URL_BUSCA = f"{URL_API}/sites/MLB/search"
+URL_CATALOGO = f"{URL_API}/products/search"
+PRODUTOS_CATALOGO = 5
+CONDICOES = {"new": "Novo", "used": "Usado"}
 URL_TOKEN = "https://api.mercadolibre.com/oauth/token"
 URL_AUTORIZACAO = "https://auth.mercadolivre.com.br/authorization"
 NOME_CREDENCIAL = "mercado_livre"
@@ -133,6 +137,109 @@ class MercadoLivre(FontePreco):
             ofertas=ofertas or [],
         )
 
+    def _consultar(self, cliente, url: str, params: dict | None = None):
+        """GET autenticado; renova o token e repete uma vez se a resposta for 401."""
+        resposta = None
+
+        for tentativa in range(2):
+            token = self._token(cliente, forcar=tentativa > 0)
+            resposta = cliente.get(url, params=params, headers={"Authorization": f"Bearer {token}"})
+
+            if resposta.status_code != 401 or not self._usa_oauth():
+                break
+
+        return resposta
+
+    def _mensagem_de_erro(self, resposta) -> str | None:
+        if resposta.status_code == 401:
+            logger.warning("Mercado Livre recusou o acesso (HTTP 401).")
+            return "O Mercado Livre recusou o acesso. Confira a configuração e a autorização do aplicativo."
+
+        if resposta.status_code == 403:
+            logger.warning("Mercado Livre bloqueou a consulta (HTTP 403): %s", resposta.text[:300])
+            return (
+                "O Mercado Livre bloqueou a consulta de preços para este aplicativo (erro 403). "
+                "Rode python -m backend.precos.diagnosticar_mercado_livre para ver o que está liberado."
+            )
+
+        if resposta.status_code == 429:
+            return "Limite de consultas do Mercado Livre atingido. Tente mais tarde."
+
+        if resposta.status_code >= 400:
+            logger.warning("Mercado Livre respondeu HTTP %s.", resposta.status_code)
+            return f"O Mercado Livre respondeu com erro {resposta.status_code}."
+
+        return None
+
+    def _menor_oferta_do_produto(self, cliente, produto) -> Oferta | None:
+        produto_id = produto.get("id")
+        nome = str(produto.get("name") or produto.get("title") or "").strip()
+        link = produto.get("permalink") or f"https://www.mercadolivre.com.br/p/{produto_id}"
+
+        resposta = self._consultar(cliente, f"{URL_API}/products/{produto_id}/items", {"limit": 10})
+
+        if resposta.status_code < 400:
+            try:
+                anuncios = [a for a in resposta.json().get("results", []) if a.get("price") is not None]
+            except ValueError:
+                anuncios = []
+
+            if anuncios:
+                melhor = min(anuncios, key=lambda a: a["price"])
+                return Oferta(
+                    titulo=nome,
+                    preco=float(melhor["price"]),
+                    moeda=melhor.get("currency_id") or "BRL",
+                    link=link,
+                    vendedor=None,
+                    condicao=CONDICOES.get(melhor.get("condition"), melhor.get("condition")),
+                )
+
+        vencedor = produto.get("buy_box_winner")
+        if not vencedor:
+            detalhe = self._consultar(cliente, f"{URL_API}/products/{produto_id}")
+            if detalhe.status_code < 400:
+                try:
+                    vencedor = detalhe.json().get("buy_box_winner")
+                except ValueError:
+                    vencedor = None
+
+        if vencedor and vencedor.get("price") is not None:
+            return Oferta(
+                titulo=nome,
+                preco=float(vencedor["price"]),
+                moeda=vencedor.get("currency_id") or "BRL",
+                link=link,
+                vendedor=None,
+                condicao=CONDICOES.get(vencedor.get("condition"), vencedor.get("condition")),
+            )
+
+        return None
+
+    def _buscar_no_catalogo(self, cliente, termo: str, limite: int):
+        """Devolve (ofertas, None) ou (None, resposta_com_erro)."""
+        resposta = self._consultar(
+            cliente,
+            URL_CATALOGO,
+            {"status": "active", "site_id": "MLB", "q": termo, "limit": min(limite, 10)},
+        )
+
+        if resposta.status_code >= 400:
+            return [], resposta
+
+        try:
+            produtos = resposta.json().get("results", [])
+        except ValueError:
+            produtos = []
+
+        ofertas = []
+        for produto in produtos[:PRODUTOS_CATALOGO]:
+            oferta = self._menor_oferta_do_produto(cliente, produto)
+            if oferta:
+                ofertas.append(oferta)
+
+        return ofertas, None
+
     def buscar(self, termo: str, limite: int = 10) -> ResultadoFonte:
         termo = termo.strip()
 
@@ -153,19 +260,15 @@ class MercadoLivre(FontePreco):
         cliente = self._cliente or httpx.Client(timeout=8)
 
         try:
-            resposta = None
+            resposta = self._consultar(cliente, self.url, {"q": termo, "limit": limite})
 
-            for tentativa in range(2):
-                token = self._token(cliente, forcar=tentativa > 0)
-
-                resposta = cliente.get(
-                    self.url,
-                    params={"q": termo, "limit": limite},
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-
-                if resposta.status_code != 401 or not self._usa_oauth():
-                    break
+            if resposta.status_code == 403:
+                # Desde 2025 o Mercado Livre bloqueia a busca de anúncios para a maioria
+                # dos aplicativos. A busca no catálogo de produtos costuma continuar liberada.
+                logger.info("Busca de anúncios bloqueada (403); usando o catálogo de produtos.")
+                ofertas, resposta = self._buscar_no_catalogo(cliente, termo, limite)
+            else:
+                ofertas = None
 
         except (ErroCredencial, ErroOAuth) as erro:
             logger.warning("Credencial do Mercado Livre indisponível: %s", erro)
@@ -184,44 +287,33 @@ class MercadoLivre(FontePreco):
             if self._cliente is None:
                 cliente.close()
 
-        if resposta.status_code in (401, 403):
-            logger.warning("Mercado Livre recusou o acesso (HTTP %s).", resposta.status_code)
-            return self._resultado(
-                "erro",
-                termo,
-                "O Mercado Livre recusou o acesso. Confira a configuração e a autorização do aplicativo.",
-            )
+        if ofertas is None:
+            erro = self._mensagem_de_erro(resposta)
+            if erro:
+                return self._resultado("erro", termo, erro)
 
-        if resposta.status_code == 429:
-            return self._resultado("erro", termo, "Limite de consultas do Mercado Livre atingido. Tente mais tarde.")
+            try:
+                dados = resposta.json()
+            except ValueError:
+                return self._resultado("erro", termo, "Resposta inesperada do Mercado Livre.")
 
-        if resposta.status_code >= 400:
-            logger.warning("Mercado Livre respondeu HTTP %s.", resposta.status_code)
-            return self._resultado("erro", termo, f"O Mercado Livre respondeu com erro {resposta.status_code}.")
-
-        try:
-            dados = resposta.json()
-        except ValueError:
-            return self._resultado("erro", termo, "Resposta inesperada do Mercado Livre.")
-
-        ofertas = []
-
-        for item in dados.get("results", [])[:limite]:
-            preco = item.get("price")
-
-            if preco is None:
-                continue
-
-            ofertas.append(
+            ofertas = [
                 Oferta(
                     titulo=str(item.get("title", "")).strip(),
-                    preco=float(preco),
+                    preco=float(item["price"]),
                     moeda=item.get("currency_id") or "BRL",
                     link=item.get("permalink"),
                     vendedor=(item.get("seller") or {}).get("nickname"),
-                    condicao={"new": "Novo", "used": "Usado"}.get(item.get("condition"), item.get("condition")),
+                    condicao=CONDICOES.get(item.get("condition"), item.get("condition")),
                 )
-            )
+                for item in dados.get("results", [])[:limite]
+                if item.get("price") is not None
+            ]
+
+        elif resposta is not None:
+            erro = self._mensagem_de_erro(resposta)
+            if erro:
+                return self._resultado("erro", termo, erro)
 
         resultado = self._resultado(
             "ok",

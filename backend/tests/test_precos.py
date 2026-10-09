@@ -87,7 +87,7 @@ def test_resultado_fica_em_cache(monkeypatch):
 
 @pytest.mark.parametrize(
     "status, trecho",
-    [(401, "recusou o acesso"), (403, "recusou o acesso"), (429, "Limite"), (500, "erro 500")],
+    [(401, "recusou o acesso"), (403, "bloqueou"), (429, "Limite"), (500, "erro 500")],
 )
 def test_erros_da_api_externa(monkeypatch, status, trecho):
     monkeypatch.setenv("MERCADO_LIVRE_TOKEN", "token-teste")
@@ -332,3 +332,42 @@ def test_extrair_codigo_do_endereco_de_retorno():
     assert extrair_codigo("https://exemplo.com/retorno?code=TG-abc&state=1") == "TG-abc"
     assert extrair_codigo("  TG-xyz  ") == "TG-xyz"
     assert extrair_codigo("https://exemplo.com/retorno") == ""
+
+
+def test_busca_bloqueada_usa_o_catalogo(monkeypatch):
+    monkeypatch.setenv("MERCADO_LIVRE_TOKEN", "token-teste")
+    chamadas = []
+
+    def responder(requisicao):
+        chamadas.append(requisicao.url.path)
+        caminho = requisicao.url.path
+        if caminho == "/sites/MLB/search":
+            return httpx.Response(403, json={"message": "forbidden"})
+        if caminho == "/products/search":
+            return httpx.Response(200, json={"results": [
+                {"id": "MLB111", "name": "Switch Intelbras 8 portas"},
+                {"id": "MLB222", "name": "Switch TP-Link 8 portas"},
+                {"id": "MLB333", "name": "Sem anúncios"},
+            ]})
+        if caminho == "/products/MLB111/items":
+            return httpx.Response(200, json={"results": [
+                {"price": 150.0, "currency_id": "BRL", "condition": "new"},
+                {"price": 129.9, "currency_id": "BRL", "condition": "new"},
+            ]})
+        if caminho == "/products/MLB222/items":
+            return httpx.Response(403, json={})
+        if caminho == "/products/MLB222":
+            return httpx.Response(200, json={"buy_box_winner": {"price": 99.5, "currency_id": "BRL"}})
+        return httpx.Response(404, json={})
+
+    fonte = MercadoLivre(cliente=httpx.Client(transport=httpx.MockTransport(responder)))
+
+    resultado = fonte.buscar("switch 8 portas")
+
+    assert resultado.situacao == "ok"
+    assert [(o.titulo, o.preco) for o in resultado.ofertas] == [
+        ("Switch Intelbras 8 portas", 129.9),
+        ("Switch TP-Link 8 portas", 99.5),
+    ]
+    assert resultado.ofertas[0].link == "https://www.mercadolivre.com.br/p/MLB111"
+    assert chamadas[:2] == ["/sites/MLB/search", "/products/search"]

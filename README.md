@@ -248,6 +248,12 @@ O formulário de cotação também mostra o último preço pago e a média ao la
 
    Abra o endereço que aparecer e autorize o aplicativo. A página do httpbin mostra `"code": "TG-..."`; cole esse código no terminal (vale por poucos minutos).
 
+Desde 2025 o Mercado Livre bloqueia a busca pública de anúncios (`/sites/MLB/search`, erro 403) para a maioria dos aplicativos. Quando isso acontece, o sistema busca no **catálogo de produtos** (`/products/search`) e pega o menor preço dos anúncios de cada produto. Para ver o que está liberado para o seu aplicativo:
+
+```bash
+python -m backend.precos.diagnosticar_mercado_livre "switch 8 portas"
+```
+
 O token do Mercado Livre expira em poucas horas. O sistema renova sozinho e guarda o token novo no banco, na tabela `credenciais_externas`. Se a autorização for revogada, a tela de preços avisa para rodar o passo 3 de novo. Para um teste rápido sem OAuth, também é possível colocar um token pronto em `MERCADO_LIVRE_TOKEN`, mas ele para de funcionar quando expira.
 
 ### Adicionar outra fonte de preços
