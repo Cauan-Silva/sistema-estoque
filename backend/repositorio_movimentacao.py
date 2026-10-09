@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 def registrar_movimentacao(
     produto_id,
     tipo,
-    quantidade
+    quantidade,
+    usuario_id=None
 ):
     conexao = conectar()
 
@@ -83,17 +84,21 @@ def registrar_movimentacao(
             INSERT INTO movimentacoes (
                 produto_id,
                 tipo,
-                quantidade
+                quantidade,
+                usuario_id
             )
-            VALUES (%s, %s, %s)
+            VALUES (%s, %s, %s, %s)
             RETURNING
                 id,
-                data_movimentacao;
+                data_movimentacao,
+                (SELECT nome FROM usuarios WHERE id = %s);
             """,
             (
                 produto_id,
                 tipo,
-                quantidade
+                quantidade,
+                usuario_id,
+                usuario_id
             )
         )
 
@@ -108,7 +113,9 @@ def registrar_movimentacao(
             "tipo": tipo,
             "quantidade": quantidade,
             "data_movimentacao": registro[1],
-            "recebimento_id": None
+            "recebimento_id": None,
+            "usuario_id": usuario_id,
+            "usuario": registro[2]
         }
 
         cursor.close()
@@ -151,10 +158,14 @@ def listar_movimentacoes(
                 m.tipo,
                 m.quantidade,
                 m.data_movimentacao,
-                m.recebimento_id
+                m.recebimento_id,
+                m.usuario_id,
+                u.nome
             FROM movimentacoes m
             INNER JOIN produtos p
                 ON p.id = m.produto_id
+            LEFT JOIN usuarios u
+                ON u.id = m.usuario_id
         """
 
         condicoes = []
@@ -240,7 +251,9 @@ def listar_movimentacoes(
                     "tipo": registro[3],
                     "quantidade": registro[4],
                     "data_movimentacao": registro[5],
-                    "recebimento_id": registro[6]
+                    "recebimento_id": registro[6],
+                    "usuario_id": registro[7],
+                    "usuario": registro[8]
                 }
             )
 
@@ -279,10 +292,14 @@ def buscar_movimentacao_por_id(
                 m.tipo,
                 m.quantidade,
                 m.data_movimentacao,
-                m.recebimento_id
+                m.recebimento_id,
+                m.usuario_id,
+                u.nome
             FROM movimentacoes m
             INNER JOIN produtos p
                 ON p.id = m.produto_id
+            LEFT JOIN usuarios u
+                ON u.id = m.usuario_id
             WHERE m.id = %s;
             """,
             (id_movimentacao,)
@@ -303,7 +320,9 @@ def buscar_movimentacao_por_id(
             "tipo": registro[3],
             "quantidade": registro[4],
             "data_movimentacao": registro[5],
-            "recebimento_id": registro[6]
+            "recebimento_id": registro[6],
+            "usuario_id": registro[7],
+            "usuario": registro[8]
         }
 
     except psycopg2.Error as erro:

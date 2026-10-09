@@ -61,6 +61,15 @@ export async function telaProdutos(area) {
           obrigatorio: true,
           valor: produto.preco,
         },
+        {
+          nome: "estoque_minimo",
+          rotulo: "Estoque mínimo",
+          tipo: "number",
+          min: 0,
+          passo: 1,
+          obrigatorio: true,
+          valor: produto.estoque_minimo ?? 5,
+        },
       ],
       {
         nome: "fornecedor_id",
@@ -170,7 +179,15 @@ export async function telaProdutos(area) {
           { titulo: "Produto", valor: (p) => p.nome },
           { titulo: "Categoria", valor: (p) => p.categoria },
           { titulo: "Fornecedor", valor: (p) => p.fornecedor || h("span", { class: "suave" }, "—") },
-          { titulo: "Quantidade", classe: "direita numero", valor: (p) => formatar.numero(p.quantidade) },
+          {
+            titulo: "Quantidade",
+            classe: "direita numero",
+            valor: (p) =>
+              p.quantidade <= p.estoque_minimo
+                ? h("span", { class: "abaixo-minimo", title: "No estoque mínimo ou abaixo" }, formatar.numero(p.quantidade))
+                : formatar.numero(p.quantidade),
+          },
+          { titulo: "Mínimo", classe: "direita numero", valor: (p) => formatar.numero(p.estoque_minimo) },
           { titulo: "Preço", classe: "direita numero", valor: (p) => formatar.moeda(p.preco) },
           {
             titulo: h("span", { class: "oculto-visualmente" }, "Ações"),
@@ -251,7 +268,7 @@ export async function telaProdutos(area) {
         "label",
         { class: "marcador" },
         h("input", { type: "checkbox", onChange: aoFiltrar("estoque_baixo") }),
-        "Só estoque baixo (5 ou menos)"
+        "Só estoque baixo (no mínimo ou abaixo)"
       )
     ),
     lista

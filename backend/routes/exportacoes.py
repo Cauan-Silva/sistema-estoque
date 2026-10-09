@@ -79,7 +79,7 @@ def exportar_produtos(
     categoria_id: int | None = Query(default=None, gt=0),
     fornecedor_id: int | None = Query(default=None, gt=0),
     estoque_baixo: bool = False,
-    limite_estoque: int = Query(default=5, ge=0)
+    limite_estoque: int | None = Query(default=None, ge=0)
 ):
     produtos = listar_produtos(
         busca=busca,

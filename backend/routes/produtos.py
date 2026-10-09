@@ -81,9 +81,10 @@ def obter_produtos(
         gt=0
     ),
     estoque_baixo: bool = False,
-    limite_estoque: int = Query(
-        default=5,
-        ge=0
+    limite_estoque: int | None = Query(
+        default=None,
+        ge=0,
+        description="Sem valor, usa o estoque mínimo de cada produto."
     ),
     pagina: int = Query(
         default=1,
@@ -148,7 +149,8 @@ def criar_produto(dados: ProdutoCriar):
         dados.categoria_id,
         dados.quantidade,
         dados.preco,
-        dados.fornecedor_id
+        dados.fornecedor_id,
+        dados.estoque_minimo
     )
 
     if produto is None:
@@ -208,7 +210,8 @@ def editar_produto(
         dados.categoria_id,
         dados.quantidade,
         dados.preco,
-        dados.fornecedor_id
+        dados.fornecedor_id,
+        dados.estoque_minimo
     )
 
     if produto is None:

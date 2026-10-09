@@ -28,6 +28,11 @@ class ProdutoBase(BaseModel):
         gt=0
     )
 
+    estoque_minimo: int = Field(
+        default=5,
+        ge=0
+    )
+
 
 class ProdutoCriar(ProdutoBase):
     pass

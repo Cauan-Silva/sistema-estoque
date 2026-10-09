@@ -113,12 +113,14 @@ def obter_movimentacao(
     status_code=status.HTTP_201_CREATED
 )
 def criar_movimentacao(
-    dados: MovimentacaoCriar
+    dados: MovimentacaoCriar,
+    usuario=Depends(obter_usuario_atual)
 ):
     movimentacao, erro = registrar_movimentacao(
         dados.produto_id,
         dados.tipo,
-        dados.quantidade
+        dados.quantidade,
+        usuario_id=usuario[0]
     )
 
     if erro == "produto_nao_encontrado":

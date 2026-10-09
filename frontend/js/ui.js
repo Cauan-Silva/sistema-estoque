@@ -179,8 +179,7 @@ export function cabecalho(titulo, descricao, ...acoes) {
         descricao ? h("p", {}, descricao) : null
       ),
       acoes.filter(Boolean).length ? h("div", { class: "acoes-cabecalho" }, acoes) : null
-    ),
-    paisagem()
+    )
   );
 }
 

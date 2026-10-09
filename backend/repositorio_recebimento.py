@@ -315,15 +315,17 @@ def registrar_recebimento(
                     produto_id,
                     tipo,
                     quantidade,
-                    recebimento_id
+                    recebimento_id,
+                    usuario_id
                 )
-                VALUES (%s, 'ENTRADA', %s, %s)
+                VALUES (%s, 'ENTRADA', %s, %s, %s)
                 RETURNING id;
                 """,
                 (
                     item["produto_id"],
                     item["quantidade"],
-                    recebimento_id
+                    recebimento_id,
+                    recebedor_id
                 )
             )
 

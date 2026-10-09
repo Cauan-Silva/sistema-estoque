@@ -6,7 +6,7 @@ from backend.database import conectar
 logger = logging.getLogger(__name__)
 
 
-def obter_resumo_estoque(limite_estoque=5):
+def obter_resumo_estoque(limite_estoque=None):
     conexao = conectar()
 
     if conexao is None:
@@ -45,14 +45,23 @@ def obter_resumo_estoque(limite_estoque=5):
 
         unidades_em_estoque = cursor.fetchone()[0]
 
-        cursor.execute(
-            """
-            SELECT COUNT(*)
-            FROM produtos
-            WHERE quantidade <= %s;
-            """,
-            (limite_estoque,)
-        )
+        if limite_estoque is None:
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM produtos
+                WHERE quantidade <= estoque_minimo;
+                """
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM produtos
+                WHERE quantidade <= %s;
+                """,
+                (limite_estoque,)
+            )
 
         produtos_estoque_baixo = (
             cursor.fetchone()[0]

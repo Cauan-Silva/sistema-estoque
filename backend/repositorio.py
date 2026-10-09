@@ -12,7 +12,8 @@ def cadastrar_produto(
     categoria_id,
     quantidade,
     preco,
-    fornecedor_id=None
+    fornecedor_id=None,
+    estoque_minimo=5
 ):
     conexao = conectar()
 
@@ -48,9 +49,10 @@ def cadastrar_produto(
                 categoria_id,
                 quantidade,
                 preco,
-                fornecedor_id
+                fornecedor_id,
+                estoque_minimo
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -59,7 +61,8 @@ def cadastrar_produto(
                 categoria_id,
                 quantidade,
                 preco,
-                fornecedor_id
+                fornecedor_id,
+                estoque_minimo
             )
         )
 
@@ -90,7 +93,7 @@ def listar_produtos(
     categoria_id=None,
     fornecedor_id=None,
     estoque_baixo=False,
-    limite_estoque=5,
+    limite_estoque=None,
     pagina=1,
     tamanho=10
 ):
@@ -111,7 +114,8 @@ def listar_produtos(
                 p.quantidade,
                 p.preco,
                 p.fornecedor_id,
-                f.nome
+                f.nome,
+                p.estoque_minimo
             FROM produtos p
             LEFT JOIN categorias c
                 ON c.id = p.categoria_id
@@ -149,7 +153,12 @@ def listar_produtos(
                 fornecedor_id
             )
 
-        if estoque_baixo:
+        if estoque_baixo and limite_estoque is None:
+            condicoes.append(
+                "p.quantidade <= p.estoque_minimo"
+            )
+
+        elif estoque_baixo:
             condicoes.append(
                 "p.quantidade <= %s"
             )
@@ -201,7 +210,8 @@ def listar_produtos(
                     registro[4],
                     float(registro[5]),
                     registro[6],
-                    registro[7]
+                    registro[7],
+                    registro[8]
                 )
             )
 
@@ -239,7 +249,8 @@ def buscar_produto_por_id(id_produto):
                 p.quantidade,
                 p.preco,
                 p.fornecedor_id,
-                f.nome
+                f.nome,
+                p.estoque_minimo
             FROM produtos p
             LEFT JOIN categorias c
                 ON c.id = p.categoria_id
@@ -266,7 +277,8 @@ def buscar_produto_por_id(id_produto):
             registro[4],
             float(registro[5]),
             registro[6],
-            registro[7]
+            registro[7],
+            registro[8]
         )
 
     except psycopg2.Error as erro:
@@ -285,7 +297,8 @@ def atualizar_produto(
     categoria_id,
     quantidade,
     preco,
-    fornecedor_id=None
+    fornecedor_id=None,
+    estoque_minimo=5
 ):
     conexao = conectar()
 
@@ -322,7 +335,8 @@ def atualizar_produto(
                 categoria_id = %s,
                 quantidade = %s,
                 preco = %s,
-                fornecedor_id = %s
+                fornecedor_id = %s,
+                estoque_minimo = %s
             WHERE id = %s
             RETURNING id;
             """,
@@ -333,6 +347,7 @@ def atualizar_produto(
                 quantidade,
                 preco,
                 fornecedor_id,
+                estoque_minimo,
                 id_produto
             )
         )

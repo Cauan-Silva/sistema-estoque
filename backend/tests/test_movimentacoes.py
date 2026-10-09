@@ -544,3 +544,25 @@ def test_validacao_tamanho_pagina_movimentacoes(
     )
 
     assert resposta.status_code == 422
+
+def test_movimentacao_registra_usuario(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+
+    produto_id = criar_produto(
+        cliente_autenticado,
+        categoria_id
+    )
+
+    criada = criar_movimentacao(
+        cliente_autenticado,
+        produto_id
+    ).json()
+
+    assert criada["usuario"] == "Usuario Testes"
+    assert criada["usuario_id"] is not None
+
+    listada = cliente_autenticado.get(
+        "/movimentacoes"
+    ).json()[0]
+
+    assert listada["usuario"] == "Usuario Testes"

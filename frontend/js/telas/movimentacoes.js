@@ -87,6 +87,7 @@ export async function telaMovimentacoes(area) {
                 ? `Recebimento Nº ${m.recebimento_id}`
                 : h("span", { class: "suave" }, "Manual"),
           },
+          { titulo: "Usuário", valor: (m) => m.usuario || h("span", { class: "suave" }, "—") },
           {
             titulo: "Quantidade",
             classe: "direita numero",

@@ -1,234 +1,273 @@
-import { api, listarTodos, montarQuery } from "../api.js";
-import { anel, barras, cartaoIndicador, colunasAgrupadas, miniBarras, progresso } from "../graficos.js";
-import { cabecalho, corStatus, etiquetaStatus, formatar, h, tabela } from "../ui.js";
+import { api, listarTodos } from "../api.js";
+import { linhaArea, rosca } from "../graficos.js";
+import { icone } from "../icones.js";
+import { cabecalho, etiquetaStatus, formatar, h, tabela } from "../ui.js";
 
-const CORES_CATEGORIAS = 6;
+const DIAS_GRAFICO = 30;
+const CATEGORIAS_ROSCA = 4;
+const CORES_ROSCA = ["var(--cor-4)", "var(--cor-1)", "var(--cor-3)", "var(--cor-2)"];
 
-function corDaCategoria(categoriaId) {
-  return `var(--cor-${((Number(categoriaId) || 1) - 1) % CORES_CATEGORIAS + 1})`;
+function chaveDia(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
 }
 
-function variacaoMensal(atual, anterior) {
-  if (!anterior) return null;
-
-  const percentual = Math.round(((atual - anterior) / anterior) * 100);
-
-  if (!percentual) return null;
-
-  return {
-    texto: `${Math.abs(percentual)}% vs mês anterior`,
-    sentido: percentual > 0 ? "alta" : "baixa",
-    tom: "neutro",
-  };
-}
-
-const MESES_GRAFICO = 6;
-
-function ultimosMeses(quantidade) {
+function ultimosDias(quantidade) {
   const hoje = new Date();
   return Array.from({ length: quantidade }, (_, indice) => {
-    const data = new Date(hoje.getFullYear(), hoje.getMonth() - (quantidade - 1 - indice), 1);
+    const data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (quantidade - 1 - indice));
     return {
-      chave: `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`,
-      rotulo: data.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+      chave: chaveDia(data),
+      rotulo: `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}`,
     };
   });
 }
 
-function valorPorCategoria(produtos) {
-  const totais = new Map();
-
-  produtos.forEach((produto) => {
-    const atual = totais.get(produto.categoria_id) || { rotulo: produto.categoria, valor: 0 };
-    atual.valor += produto.quantidade * produto.preco;
-    totais.set(produto.categoria_id, atual);
-  });
-
-  const ordenados = [...totais.entries()]
-    .map(([id, item]) => ({ ...item, cor: corDaCategoria(id) }))
-    .sort((a, b) => b.valor - a.valor);
-
-  if (ordenados.length <= 7) return ordenados;
-
-  const outras = ordenados.slice(6).reduce((soma, item) => soma + item.valor, 0);
-  return [...ordenados.slice(0, 6), { rotulo: "Outras", valor: outras, cor: "var(--tinta-suave)" }];
-}
-
-function movimentosPorMes(movimentacoes, meses) {
-  const entradas = new Map(meses.map((mes) => [mes.chave, 0]));
-  const saidas = new Map(meses.map((mes) => [mes.chave, 0]));
+function movimentosPorDia(movimentacoes, dias) {
+  const entradas = new Map(dias.map((dia) => [dia.chave, 0]));
+  const saidas = new Map(dias.map((dia) => [dia.chave, 0]));
 
   movimentacoes.forEach((movimentacao) => {
-    const chave = movimentacao.data_movimentacao.slice(0, 7);
+    const chave = movimentacao.data_movimentacao.slice(0, 10);
     const alvo = movimentacao.tipo === "ENTRADA" ? entradas : saidas;
     if (alvo.has(chave)) alvo.set(chave, alvo.get(chave) + movimentacao.quantidade);
   });
 
   return {
-    entradas: meses.map((mes) => entradas.get(mes.chave)),
-    saidas: meses.map((mes) => saidas.get(mes.chave)),
+    entradas: dias.map((dia) => entradas.get(dia.chave)),
+    saidas: dias.map((dia) => saidas.get(dia.chave)),
   };
 }
 
-const LIMITE_ESTOQUE_BAIXO = 5;
+function produtosPorCategoria(produtos) {
+  const contagem = new Map();
+  produtos.forEach((produto) => contagem.set(produto.categoria, (contagem.get(produto.categoria) || 0) + 1));
+
+  const ordenadas = [...contagem.entries()].sort((a, b) => b[1] - a[1]);
+  const principais = ordenadas.slice(0, CATEGORIAS_ROSCA).map(([nome, valor], indice) => ({
+    nome,
+    valor,
+    cor: CORES_ROSCA[indice],
+  }));
+  const restantes = ordenadas.slice(CATEGORIAS_ROSCA).reduce((soma, [, valor]) => soma + valor, 0);
+
+  return restantes ? [...principais, { nome: "Outras", valor: restantes, cor: "var(--linha-forte)" }] : principais;
+}
+
+function tendencia(atual, anterior) {
+  if (!anterior) return null;
+  const percentual = Math.round(((atual - anterior) / anterior) * 100);
+  return { percentual, sentido: percentual >= 0 ? "alta" : "baixa" };
+}
+
+function indicador({ nomeIcone, cor, rotulo, valor, variacao, legenda }) {
+  return h(
+    "article",
+    { class: "kpi", dataset: { cor } },
+    h("span", { class: "kpi-icone" }, icone(nomeIcone)),
+    h(
+      "div",
+      { class: "kpi-texto" },
+      h("h3", {}, rotulo),
+      h("p", { class: "kpi-valor" }, valor),
+      variacao
+        ? h(
+            "p",
+            { class: "kpi-variacao", dataset: { sentido: variacao.sentido } },
+            icone(variacao.sentido),
+            `${variacao.percentual > 0 ? "+" : ""}${variacao.percentual}%`
+          )
+        : null,
+      h("p", { class: "kpi-legenda" }, legenda)
+    )
+  );
+}
+
+function bloco(titulo, acao, ...conteudo) {
+  return h(
+    "section",
+    { class: "bloco" },
+    h("div", { class: "bloco-topo" }, h("h2", {}, titulo), acao || null),
+    conteudo
+  );
+}
+
+function verTodos(texto, destino) {
+  return h("a", { class: "ver-todos", href: destino }, texto, icone("seta"));
+}
+
+function hojePorExtenso() {
+  const texto = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+  return h("p", { class: "data-hoje" }, icone("calendario"), `Hoje, ${texto}`);
+}
 
 export async function telaPainel(area) {
-  const meses = ultimosMeses(MESES_GRAFICO);
+  const dias = ultimosDias(DIAS_GRAFICO);
+  const hoje = new Date();
+  const mesAtual = chaveDia(hoje).slice(0, 7);
+  const inicioMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+  const mesAnterior = chaveDia(inicioMesAnterior).slice(0, 7);
+  const inicioBusca = dias[0].chave < chaveDia(inicioMesAnterior) ? dias[0].chave : chaveDia(inicioMesAnterior);
 
-  const [resumo, maiorValor, estoqueBaixo, abertas, emCotacao, aprovadas, compradas, produtos, movimentacoes] = await Promise.all([
-    api.get(`/relatorios/resumo${montarQuery({ limite_estoque: LIMITE_ESTOQUE_BAIXO })}`),
-    api.get("/relatorios/maior-valor?limite=5"),
-    api.get(
-      `/produtos${montarQuery({ estoque_baixo: true, limite_estoque: LIMITE_ESTOQUE_BAIXO, tamanho: 8 })}`
-    ),
-    api.get("/solicitacoes-compra?status=ABERTA&tamanho=100"),
-    api.get("/solicitacoes-compra?status=EM_COTACAO&tamanho=100"),
-    api.get("/solicitacoes-compra?status=APROVADA&tamanho=100"),
-    api.get("/solicitacoes-compra?status=COMPRADA&tamanho=100"),
-    listarTodos("/produtos"),
-    listarTodos("/movimentacoes", { data_inicio: `${meses[0].chave}-01T00:00:00` }),
-  ]);
+  const [resumo, estoqueBaixo, ultimas, abertas, emCotacao, aprovadas, compradas, produtos, movimentacoes] =
+    await Promise.all([
+      api.get("/relatorios/resumo"),
+      api.get("/produtos?estoque_baixo=true&tamanho=5"),
+      api.get("/movimentacoes?tamanho=5"),
+      api.get("/solicitacoes-compra?status=ABERTA&tamanho=100"),
+      api.get("/solicitacoes-compra?status=EM_COTACAO&tamanho=100"),
+      api.get("/solicitacoes-compra?status=APROVADA&tamanho=100"),
+      api.get("/solicitacoes-compra?status=COMPRADA&tamanho=100"),
+      listarTodos("/produtos"),
+      listarTodos("/movimentacoes", { data_inicio: `${inicioBusca}T00:00:00` }),
+    ]);
 
-  const porMes = movimentosPorMes(movimentacoes, meses);
-  const categorias = valorPorCategoria(produtos);
-
-  const pendentes = [...compradas, ...aprovadas, ...emCotacao, ...abertas].slice(0, 8);
+  const porDia = movimentosPorDia(movimentacoes, dias);
+  const noMes = movimentacoes.filter((m) => m.data_movimentacao.startsWith(mesAtual)).length;
+  const noMesAnterior = movimentacoes.filter((m) => m.data_movimentacao.startsWith(mesAnterior)).length;
+  const variacaoMes = tendencia(noMes, noMesAnterior);
+  const pendentes = [...compradas, ...aprovadas, ...emCotacao, ...abertas].slice(0, 6);
 
   area.replaceChildren(
-    cabecalho("Painel", "Situação do estoque e das compras em andamento."),
+    cabecalho("Painel", "Visão geral do estoque, das movimentações e das compras.", hojePorExtenso()),
     h(
       "div",
-      { class: "cartoes-indicador" },
-      cartaoIndicador({
-        rotulo: "Valor em estoque",
-        valor: formatar.moeda(resumo.valor_total_estoque),
-        cor: "1",
-        detalhe: `${formatar.numero(resumo.total_categorias)} categorias`,
-        visual: miniBarras(categorias, formatar.moeda),
-      }),
-      cartaoIndicador({
-        rotulo: "Unidades em estoque",
-        valor: formatar.numero(resumo.unidades_em_estoque),
+      { class: "kpis" },
+      indicador({
+        nomeIcone: "pacote",
         cor: "4",
-        detalhe: `em ${formatar.numero(resumo.total_produtos)} produtos`,
-        variacao: variacaoMensal(porMes.entradas.at(-1), porMes.entradas.at(-2)),
-        visual: miniBarras(
-          meses.map((mes, indice) => ({ rotulo: mes.rotulo, valor: porMes.entradas[indice] })),
-          (valor) => `${formatar.numero(valor)} un. de entrada`
-        ),
+        rotulo: "Total de produtos",
+        valor: formatar.numero(resumo.total_produtos),
+        legenda: `Em ${formatar.numero(resumo.total_categorias)} categorias`,
       }),
-      cartaoIndicador({
-        rotulo: `Estoque baixo (${LIMITE_ESTOQUE_BAIXO} ou menos)`,
+      indicador({
+        nomeIcone: "banco",
+        cor: "3",
+        rotulo: "Valor estimado do estoque",
+        valor: formatar.moeda(resumo.valor_total_estoque),
+        legenda: `${formatar.numero(resumo.unidades_em_estoque)} unidades em estoque`,
+      }),
+      indicador({
+        nomeIcone: "alerta",
+        cor: "alerta",
+        rotulo: "Produtos com estoque baixo",
         valor: formatar.numero(resumo.produtos_estoque_baixo),
-        cor: resumo.produtos_estoque_baixo > 0 ? "alerta" : "3",
-        detalhe:
-          resumo.produtos_estoque_baixo > 0
-            ? `de ${formatar.numero(resumo.total_produtos)} produtos precisam de reposição`
-            : "Nenhum produto precisa de reposição",
-        visual: progresso(resumo.produtos_estoque_baixo, resumo.total_produtos, "Parte dos produtos com estoque baixo"),
+        legenda: resumo.produtos_estoque_baixo
+          ? "No estoque mínimo ou abaixo dele"
+          : "Nenhum produto abaixo do mínimo",
       }),
-      cartaoIndicador({
-        rotulo: "Compras em andamento",
-        valor: formatar.numero(abertas.length + emCotacao.length + aprovadas.length + compradas.length),
-        cor: "2",
-        detalhe: `${formatar.numero(compradas.length)} aguardando entrega`,
-        visual: anel(
-          [
-            { nome: "Abertas", valor: abertas.length, cor: `var(--fibra-${corStatus("ABERTA")})` },
-            { nome: "Em cotação", valor: emCotacao.length, cor: `var(--fibra-${corStatus("EM_COTACAO")})` },
-            { nome: "Aprovadas", valor: aprovadas.length, cor: `var(--fibra-${corStatus("APROVADA")})` },
-            { nome: "Compradas", valor: compradas.length, cor: `var(--fibra-${corStatus("COMPRADA")})` },
-          ]
-        ),
+      indicador({
+        nomeIcone: "trocas",
+        cor: "1",
+        rotulo: "Movimentações no mês",
+        valor: formatar.numero(noMes),
+        variacao: variacaoMes,
+        legenda: variacaoMes ? "Em relação ao mês anterior" : "Sem movimentações no mês anterior",
       })
     ),
     h(
       "div",
-      { class: "graficos" },
-      barras({
-        titulo: "Valor em estoque por categoria",
-        descricao: "Quantidade × preço de cada produto, somado por categoria.",
-        itens: categorias,
-        formatar: formatar.moeda,
-        vazio: "Cadastre produtos para ver o valor por categoria.",
-      }),
-      colunasAgrupadas({
-        titulo: "Entradas e saídas por mês",
-        descricao: `Unidades movimentadas nos últimos ${MESES_GRAFICO} meses.`,
-        categorias: meses.map((mes) => mes.rotulo),
-        series: [
-          { nome: "Entradas", cor: "var(--grafico-1)", valores: porMes.entradas },
-          { nome: "Saídas", cor: "var(--grafico-2)", valores: porMes.saidas },
-        ],
-        formatar: (valor) => `${formatar.numero(valor)} un.`,
-        vazio: "Nenhuma movimentação nos últimos meses.",
-      })
-    ),
-    h(
-      "div",
-      { class: "colunas" },
-      h(
-        "section",
-        { class: "secao" },
+      { class: "blocos blocos-grafico" },
+      bloco(
+        "Movimentações no período",
         h(
-          "div",
-          { class: "titulo-secao" },
-          h("h2", {}, "Estoque baixo"),
-          h("a", { href: "#/produtos" }, "Ver produtos")
+          "ul",
+          { class: "legenda-linha" },
+          h("li", {}, h("span", { class: "ponto", style: { background: "var(--cor-4)" } }), "Entradas"),
+          h("li", {}, h("span", { class: "ponto", style: { background: "var(--cor-3)" } }), "Saídas")
         ),
+        h("p", { class: "bloco-descricao" }, `Unidades por dia nos últimos ${DIAS_GRAFICO} dias.`),
+        linhaArea({
+          rotulos: dias.map((dia) => dia.rotulo),
+          series: [
+            { nome: "Entradas", cor: "var(--cor-4)", valores: porDia.entradas },
+            { nome: "Saídas", cor: "var(--cor-3)", valores: porDia.saidas },
+          ],
+          formatar: formatar.numero,
+          vazio: `Nenhuma movimentação nos últimos ${DIAS_GRAFICO} dias.`,
+        })
+      ),
+      bloco(
+        "Produtos por categoria",
+        null,
+        produtos.length
+          ? rosca(produtosPorCategoria(produtos), {
+              centro: formatar.numero(produtos.length),
+              legendaCentro: produtos.length === 1 ? "produto" : "produtos",
+            })
+          : h("p", { class: "grafico-vazio suave" }, "Cadastre produtos para ver a distribuição.")
+      )
+    ),
+    h(
+      "div",
+      { class: "blocos blocos-tabela" },
+      bloco(
+        "Últimas movimentações",
+        verTodos("Ver todas", "#/movimentacoes"),
         tabela(
           [
-            { titulo: "Produto", valor: (p) => p.nome },
-            { titulo: "Categoria", valor: (p) => p.categoria },
-            { titulo: "Quantidade", classe: "direita numero", valor: (p) => formatar.numero(p.quantidade) },
+            { titulo: "Data", valor: (m) => formatar.data(m.data_movimentacao) },
+            { titulo: "Produto", valor: (m) => m.produto_nome },
+            {
+              titulo: "Tipo",
+              valor: (m) =>
+                h(
+                  "span",
+                  { class: "chip-tipo", dataset: { tipo: m.tipo } },
+                  m.tipo === "ENTRADA" ? "Entrada" : "Saída"
+                ),
+            },
+            { titulo: "Quantidade", classe: "numero", valor: (m) => formatar.numero(m.quantidade) },
+            {
+              titulo: "Usuário",
+              valor: (m) => m.usuario || (m.recebimento_id ? `Recebimento Nº ${m.recebimento_id}` : "—"),
+            },
+          ],
+          ultimas,
+          { vazio: "Nenhuma movimentação registrada." }
+        )
+      ),
+      bloco(
+        "Produtos com estoque baixo",
+        verTodos("Ver todos", "#/produtos"),
+        tabela(
+          [
+            {
+              titulo: "Produto",
+              valor: (p) => h("span", { class: "produto-celula" }, h("span", { class: "produto-icone" }, icone("pacote")), p.nome),
+            },
+            {
+              titulo: "Estoque atual",
+              classe: "numero",
+              valor: (p) =>
+                h(
+                  "span",
+                  { class: p.quantidade * 2 <= p.estoque_minimo ? "critico" : "" },
+                  formatar.numero(p.quantidade)
+                ),
+            },
+            {
+              titulo: "Estoque mínimo",
+              classe: "numero",
+              valor: (p) => h("span", { class: "chip-minimo" }, formatar.numero(p.estoque_minimo)),
+            },
           ],
           estoqueBaixo,
           { vazio: "Nenhum produto com estoque baixo." }
         )
-      ),
-      h(
-        "section",
-        { class: "secao" },
-        h(
-          "div",
-          { class: "titulo-secao" },
-          h("h2", {}, "Compras em andamento"),
-          h("a", { href: "#/solicitacoes" }, "Ver solicitações")
-        ),
-        tabela(
-          [
-            {
-              titulo: "Solicitação",
-              valor: (s) => h("a", { href: `#/solicitacoes/${s.id}` }, `Nº ${s.id}`),
-            },
-            { titulo: "Itens", classe: "numero", valor: (s) => s.itens.length },
-            { titulo: "Status", valor: (s) => etiquetaStatus(s.status) },
-          ],
-          pendentes,
-          { vazio: "Nenhuma compra em andamento." }
-        )
       )
     ),
-    h(
-      "section",
-      { class: "secao" },
-      h("h2", {}, "Maior valor em estoque"),
+    bloco(
+      "Compras em andamento",
+      verTodos("Ver solicitações", "#/solicitacoes"),
       tabela(
         [
-          { titulo: "Produto", valor: (p) => p.nome },
-          { titulo: "Categoria", valor: (p) => p.categoria },
-          { titulo: "Quantidade", classe: "direita numero", valor: (p) => formatar.numero(p.quantidade) },
-          { titulo: "Preço", classe: "direita numero", valor: (p) => formatar.moeda(p.preco) },
-          { titulo: "Valor em estoque", classe: "direita numero", valor: (p) => formatar.moeda(p.valor_estoque) },
+          { titulo: "Solicitação", valor: (s) => h("a", { href: `#/solicitacoes/${s.id}` }, `Nº ${s.id}`) },
+          { titulo: "Itens", classe: "numero", valor: (s) => s.itens.length },
+          { titulo: "Status", valor: (s) => etiquetaStatus(s.status) },
         ],
-        maiorValor,
-        { vazio: "Cadastre produtos para ver o valor em estoque." }
+        pendentes,
+        { vazio: "Nenhuma compra em andamento." }
       )
-    ),
-    h(
-      "p",
-      { class: "suave" },
-      `Unidades que entraram no estoque: ${formatar.numero(resumo.total_entradas)}. Unidades que saíram: ${formatar.numero(resumo.total_saidas)}.`
     )
   );
 }

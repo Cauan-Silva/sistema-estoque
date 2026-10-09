@@ -18,3 +18,5 @@ class MovimentacaoResposta(BaseModel):
     quantidade: int
     data_movimentacao: datetime
     recebimento_id: int | None = None
+    usuario_id: int | None = None
+    usuario: str | None = None

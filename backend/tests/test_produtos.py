@@ -610,3 +610,43 @@ def test_filtrar_produtos_por_fornecedor(cliente_autenticado):
     nomes = [produto["nome"] for produto in resposta.json()]
 
     assert nomes == ["Produto A"]
+
+
+def test_estoque_minimo_por_produto(cliente_autenticado):
+    categoria_id = criar_categoria(cliente_autenticado)
+
+    padrao = criar_produto(
+        cliente_autenticado,
+        categoria_id,
+        nome="Mínimo padrão",
+        quantidade=8
+    ).json()
+
+    assert padrao["estoque_minimo"] == 5
+
+    resposta = cliente_autenticado.post(
+        "/produtos",
+        json={
+            "nome": "Mínimo dez",
+            "categoria_id": categoria_id,
+            "quantidade": 8,
+            "preco": 10,
+            "estoque_minimo": 10
+        }
+    )
+
+    assert resposta.status_code == 201
+    assert resposta.json()["estoque_minimo"] == 10
+
+    baixos = cliente_autenticado.get(
+        "/produtos",
+        params={"estoque_baixo": True}
+    ).json()
+
+    assert [p["nome"] for p in baixos] == ["Mínimo dez"]
+
+    resumo = cliente_autenticado.get(
+        "/relatorios/resumo"
+    ).json()
+
+    assert resumo["produtos_estoque_baixo"] == 1
