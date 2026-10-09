@@ -362,6 +362,9 @@ python -m backend.importacao.historico_compras pedidos.csv --email seu@email.com
 - `--simular-consumo`: cria saídas **fictícias** para o painel e a sugestão de compra terem dados. Use só para demonstração.
 - `--forcar`: importa mesmo que o banco já tenha solicitações.
 - `--banco nome`: importa em outro banco (criado se não existir), sem mexer no principal.
+- `--desfazer`: antes de importar, apaga o que uma importação anterior criou (pedidos, entradas no estoque e consumo simulado), devolvendo o estoque. Use para refazer uma importação interrompida. `--so-desfazer` só apaga.
+
+A importação pode passar dos 30 minutos do login em máquinas lentas; o acesso é renovado sozinho.
 
 ## Exportação
 

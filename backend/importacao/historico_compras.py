@@ -35,6 +35,61 @@ GRUPOS_DE_ESTOQUE = {
     "Estoque", "ONU", "Roteadores", "GBIC", "Cabos", "Splitter", "Fontes",
     "Equipamento de proteção individual",
 }
+DOMINIO_HISTORICO = "@historico.sistema-estoque.app"
+MARCA_PEDIDO = "Pedido % do sistema antigo%"
+
+# Saídas simuladas: sem usuário, sem recebimento e com hora cheia.
+CONDICAO_CONSUMO_SIMULADO = """
+    tipo = 'SAIDA' AND usuario_id IS NULL AND recebimento_id IS NULL
+    AND data_movimentacao = date_trunc('hour', data_movimentacao)
+"""
+
+
+def desfazer_importacao(conexao) -> tuple[int, int]:
+    """Apaga as solicitações importadas, as entradas dos recebimentos delas e o
+    consumo simulado, devolvendo o estoque ao que era. Cadastros (produtos,
+    fornecedores, categorias, formas de pagamento e usuários) ficam."""
+    cursor = conexao.cursor()
+    cursor.execute(
+        "CREATE TEMP TABLE hist_solicitacoes ON COMMIT DROP AS "
+        "SELECT id FROM solicitacoes_compra WHERE observacao LIKE %s;",
+        (MARCA_PEDIDO,),
+    )
+    cursor.execute(
+        f"""
+        CREATE TEMP TABLE hist_movimentos ON COMMIT DROP AS
+        SELECT m.id, m.produto_id, m.tipo, m.quantidade
+        FROM movimentacoes m
+        JOIN recebimentos r ON r.id = m.recebimento_id
+        JOIN compras c ON c.id = r.compra_id
+        WHERE c.solicitacao_id IN (SELECT id FROM hist_solicitacoes)
+        UNION
+        SELECT id, produto_id, tipo, quantidade FROM movimentacoes WHERE {CONDICAO_CONSUMO_SIMULADO};
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE produtos p
+        SET quantidade = GREATEST(0, p.quantidade - x.saldo)
+        FROM (
+            SELECT produto_id, SUM(CASE WHEN tipo = 'ENTRADA' THEN quantidade ELSE -quantidade END) AS saldo
+            FROM hist_movimentos GROUP BY produto_id
+        ) x
+        WHERE p.id = x.produto_id;
+        """
+    )
+    cursor.execute("DELETE FROM movimentacoes WHERE id IN (SELECT id FROM hist_movimentos);")
+    movimentos = cursor.rowcount
+    cursor.execute(
+        "DELETE FROM recebimentos WHERE compra_id IN "
+        "(SELECT id FROM compras WHERE solicitacao_id IN (SELECT id FROM hist_solicitacoes));"
+    )
+    cursor.execute("DELETE FROM compras WHERE solicitacao_id IN (SELECT id FROM hist_solicitacoes);")
+    cursor.execute("UPDATE solicitacoes_compra SET cotacao_aprovada_id = NULL WHERE id IN (SELECT id FROM hist_solicitacoes);")
+    cursor.execute("DELETE FROM solicitacoes_compra WHERE id IN (SELECT id FROM hist_solicitacoes);")
+    solicitacoes = cursor.rowcount
+    conexao.commit()
+    return solicitacoes, movimentos
 
 
 def _normalizar(texto: str) -> str:
@@ -70,12 +125,37 @@ class Importador:
         self.cliente = cliente
         self.saida = saida
         self.erros = []
-        self.tokens = {}
+        # O login vale 30 minutos e a importação pode demorar mais que isso em
+        # máquinas lentas: o token vencido é trocado por um novo e a chamada é
+        # repetida. Quem guardou o token antigo continua usando-o como chave.
+        self.donos = {}
+        self.substitutos = {}
 
     # ---------- chamadas à API ----------
 
+    def _vigente(self, token):
+        while token in self.substitutos:
+            token = self.substitutos[token]
+        return token
+
+    def _renovar(self, token):
+        from backend.autenticacao import criar_token_acesso
+
+        novo = criar_token_acesso(*self.donos[token])
+        self.donos[novo] = self.donos[token]
+        self.substitutos[token] = novo
+        return novo
+
+    def _registrar(self, token, usuario_id, email):
+        self.donos[token] = (usuario_id, email)
+        return token
+
     def chamar(self, metodo, caminho, token, esperado=(200, 201, 204), **kw):
+        token = self._vigente(token)
         resposta = self.cliente.request(metodo, caminho, headers={"Authorization": f"Bearer {token}"}, **kw)
+        if resposta.status_code == 401 and token in self.donos:
+            token = self._renovar(token)
+            resposta = self.cliente.request(metodo, caminho, headers={"Authorization": f"Bearer {token}"}, **kw)
         if resposta.status_code not in esperado:
             self.erros.append(f"{metodo} {caminho}: {resposta.status_code} {resposta.text[:200]}")
         return resposta
@@ -84,7 +164,16 @@ class Importador:
         resposta = self.cliente.post("/usuarios/login", json={"email": email, "senha": senha})
         if resposta.status_code != 200:
             raise SystemExit(f"Não foi possível entrar com {email}: {resposta.json().get('detail')}")
-        return resposta.json()["access_token"]
+        from jose import jwt
+
+        token = resposta.json()["access_token"]
+        dados = jwt.get_unverified_claims(token)
+        return self._registrar(token, int(dados["sub"]), dados["email"])
+
+    def token_de(self, usuario_id, email):
+        from backend.autenticacao import criar_token_acesso
+
+        return self._registrar(criar_token_acesso(usuario_id, email), usuario_id, email)
 
     # ---------- passos ----------
 
@@ -110,13 +199,20 @@ class Importador:
             if nome.upper() == self.admin_nome.upper():
                 self.pessoas[nome] = (self.admin, True)
                 continue
-            if nome.upper() in existentes:
-                # Já existe: as ações dessa pessoa são feitas pelo administrador.
-                self.pessoas[nome] = (self.admin, True)
-                continue
             perfil = "ADMINISTRADOR" if nome in solicitantes and nome in aprovadores else (
                 "COMPRADOR" if nome in solicitantes else "APROVADOR")
-            email = re.sub(r"[^a-z0-9.]", "", _normalizar(nome).lower().replace(" ", ".")) + "@historico.sistema-estoque.app"
+            existente = existentes.get(nome.upper())
+            if existente and existente["email"].endswith(DOMINIO_HISTORICO):
+                # Criado numa importação anterior: reativa enquanto importa.
+                self.chamar("PATCH", f"/usuarios/{existente['id']}", self.admin, json={"ativo": True, "perfil": perfil})
+                self.pessoas[nome] = (self.token_de(existente["id"], existente["email"]), perfil == "ADMINISTRADOR")
+                self.criados.append(existente["id"])
+                continue
+            if existente:
+                # Usuário de verdade com o mesmo nome: as ações dele são feitas pelo administrador.
+                self.pessoas[nome] = (self.admin, True)
+                continue
+            email = re.sub(r"[^a-z0-9.]", "", _normalizar(nome).lower().replace(" ", ".")) + DOMINIO_HISTORICO
             senha = secrets.token_urlsafe(18)
             criado = self.cliente.post("/usuarios", json={"nome": nome.title(), "email": email, "senha": senha})
             if criado.status_code != 201:
@@ -362,7 +458,8 @@ class Importador:
         cursor = conexao.cursor()
         for mid, dia in criadas:
             cursor.execute(
-                "UPDATE movimentacoes SET data_movimentacao = %s::date + make_interval(hours => %s) WHERE id = %s;",
+                "UPDATE movimentacoes SET data_movimentacao = %s::date + make_interval(hours => %s), usuario_id = NULL "
+                "WHERE id = %s;",
                 (dia, aleatorio.randint(8, 17), mid),
             )
         conexao.commit()
@@ -386,6 +483,9 @@ def main(argumentos=None):
     parser.add_argument("--estoque-minimo", action="store_true", help="Calcula o estoque mínimo pela compra média mensal.")
     parser.add_argument("--simular-consumo", action="store_true", help="Cria saídas simuladas (só para demonstração).")
     parser.add_argument("--forcar", action="store_true", help="Importa mesmo que o banco já tenha solicitações.")
+    parser.add_argument("--desfazer", action="store_true",
+                        help="Apaga antes o que uma importação anterior criou (pedidos, entradas e consumo simulado).")
+    parser.add_argument("--so-desfazer", action="store_true", help="Só apaga a importação anterior, sem importar de novo.")
     args = parser.parse_args(argumentos)
 
     if args.banco:
@@ -418,6 +518,12 @@ def main(argumentos=None):
 
     with TestClient(app) as cliente:
         conexao = conectar()
+        if args.desfazer or args.so_desfazer:
+            solicitacoes, movimentos = desfazer_importacao(conexao)
+            print(f"Importação anterior desfeita: {solicitacoes} solicitações e {movimentos} movimentações apagadas.")
+            if args.so_desfazer:
+                conexao.close()
+                return 0
         cursor = conexao.cursor()
         cursor.execute("SELECT COUNT(*) FROM solicitacoes_compra;")
         existentes = cursor.fetchone()[0]

@@ -73,3 +73,57 @@ def test_nao_importa_em_banco_com_dados_sem_forcar(cliente_autenticado, tmp_path
         assert "já tem" in str(erro)
     else:
         raise AssertionError("deveria recusar")
+
+
+def test_importacao_continua_quando_o_login_vence(cliente_autenticado, tmp_path, monkeypatch):
+    """Em PCs lentos a importação passa dos 30 minutos do login."""
+    from datetime import datetime, timedelta, timezone
+
+    from jose import jwt
+
+    import backend.autenticacao as autenticacao
+    import backend.routes.usuarios as rotas_usuarios
+
+    def token_vencido(usuario_id, email):
+        dados = {"sub": str(usuario_id), "email": email, "exp": datetime.now(timezone.utc) - timedelta(minutes=1)}
+        return jwt.encode(dados, autenticacao.CHAVE_SECRETA, algorithm=autenticacao.ALGORITMO)
+
+    monkeypatch.setattr(rotas_usuarios, "criar_token_acesso", token_vencido)
+    arquivo = tmp_path / "pedidos.csv"
+    arquivo.write_text(CSV, encoding="utf-8")
+
+    assert main([str(arquivo), "--email", "usuario.testes@teste.com", "--senha", "senha123", "--forcar",
+                 "--estoque-minimo", "--simular-consumo"]) == 0
+
+    solicitacoes = cliente_autenticado.get("/solicitacoes-compra").json()
+    assert {s["status"] for s in solicitacoes} == {"RECEBIDA"} and len(solicitacoes) == 2
+
+
+def test_desfazer_e_importar_de_novo(cliente_autenticado, tmp_path):
+    arquivo = tmp_path / "pedidos.csv"
+    arquivo.write_text(CSV, encoding="utf-8")
+    argumentos = [str(arquivo), "--email", "usuario.testes@teste.com", "--senha", "senha123", "--forcar"]
+
+    def estoque():
+        produtos = cliente_autenticado.get("/produtos", params={"tamanho": 100}).json()
+        return {p["nome"]: p["quantidade"] for p in produtos}
+
+    assert main(argumentos + ["--simular-consumo"]) == 0
+    manual = cliente_autenticado.post("/movimentacoes", json={
+        "produto_id": next(p["id"] for p in cliente_autenticado.get("/produtos").json() if p["nome"] == "CAIXA ÓPTICA"),
+        "tipo": "ENTRADA", "quantidade": 3,
+    })
+    assert manual.status_code == 201
+
+    assert main(argumentos + ["--desfazer", "--simular-consumo"]) == 0
+    solicitacoes = cliente_autenticado.get("/solicitacoes-compra").json()
+    assert len(solicitacoes) == 2
+    assert {s["solicitante"] for s in solicitacoes} == {"Ana Compras"}
+    usuarios = [u for u in cliente_autenticado.get("/usuarios").json() if u["nome"] == "Ana Compras"]
+    assert len(usuarios) == 1 and usuarios[0]["ativo"] is False
+
+    assert main(argumentos + ["--so-desfazer"]) == 0
+    assert cliente_autenticado.get("/solicitacoes-compra").json() == []
+    assert estoque() == {'ELETRODUTO PVC 1"': 0, "CAIXA ÓPTICA": 3}
+    movimentos = cliente_autenticado.get("/movimentacoes").json()
+    assert [(m["tipo"], m["quantidade"]) for m in movimentos] == [("ENTRADA", 3)]
