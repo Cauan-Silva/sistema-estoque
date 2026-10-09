@@ -52,3 +52,21 @@ def exigir(permissao: str):
         return usuario
 
     return Depends(verificar)
+
+
+def exigir_alguma(*permissoes: str):
+    """Libera quem tiver pelo menos uma das permissões."""
+    for permissao in permissoes:
+        if permissao not in PERMISSOES:
+            raise ValueError(f"Permissão desconhecida: {permissao}")
+
+    def verificar(usuario=Depends(obter_usuario_atual)):
+        perfil = perfil_do_usuario(usuario)
+        if not any(perfil in PERMISSOES[p] for p in permissoes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seu perfil não tem permissão para esta ação."
+            )
+        return usuario
+
+    return Depends(verificar)
