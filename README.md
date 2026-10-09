@@ -37,6 +37,9 @@ O projeto é composto por uma API REST em **Python + FastAPI + PostgreSQL** e um
 - Cotações por fornecedor, com preços por item, frete, prazo, validade e forma de pagamento
 - Planilha de orçamento: modelo padrão em Excel com os itens da solicitação, importação da planilha preenchida como cotação e exportação das cotações em Excel ou PDF
 - Solicitação a partir de orçamentos: envie os PDFs, prints ou XML de NF-e recebidos dos fornecedores; o sistema lê cada um, sugere fornecedor e produtos (e lembra as associações para a próxima vez), e a solicitação já nasce com as cotações
+- Notificações: o sino no topo mostra o que cada perfil precisa fazer (cotar, aprovar, comprar, receber, repor estoque), com entregas atrasadas e estoque no mínimo em destaque
+- Anexos na solicitação: notas fiscais, propostas, pedidos e boletos (PDF, imagem, XML, planilhas, até 10 MB); os orçamentos importados ficam anexados sozinhos
+- Sugestão de compra: calcula o que repor pelo estoque mínimo, consumo médio, prazo de entrega e pedidos em aberto, e cria a solicitação com os itens escolhidos
 - Comparação de cotações: menor total, menor prazo, menor frete e melhor preço de cada produto
 - Aprovação e reprovação com justificativa; só o Administrador pode decidir sobre a própria solicitação
 - Registro da compra com cópia dos valores aprovados
@@ -317,6 +320,9 @@ As demais rotas exigem o cabeçalho `Authorization: Bearer <token>`.
 | Cotações | `GET/POST /solicitacoes-compra/{id}/cotacoes`, `GET/PUT/DELETE .../cotacoes/{cotacao_id}`, `GET .../cotacoes/comparacao` |
 | Planilha de orçamento | `GET .../cotacoes/modelo`, `POST .../cotacoes/importar` (arquivo .xlsx; `substituir=true` atualiza a cotação do mesmo fornecedor), `GET .../cotacoes/exportar?formato=xlsx\|pdf`, `GET .../cotacoes/{cotacao_id}/planilha` |
 | Orçamentos recebidos | `GET /orcamentos/configuracao`, `POST /orcamentos/ler` (PDF, imagem ou XML; não grava nada), `POST /orcamentos/solicitacao` (cria a solicitação e as cotações numa transação) |
+| Notificações | `GET /notificacoes` (pendências do usuário logado, conforme o perfil) |
+| Anexos | `GET/POST /solicitacoes-compra/{id}/anexos`, `GET/DELETE .../anexos/{anexo_id}` |
+| Sugestão de compra | `GET /sugestoes-compra?dias_consumo=90&cobertura_dias=30&prazo_padrao=7&todos=false` |
 | Compras | `POST/GET /solicitacoes-compra/{id}/compra`, `GET /compras`, `GET /compras/{id}` |
 | Recebimentos | `POST/GET /solicitacoes-compra/{id}/compra/recebimentos` |
 | Preços | `GET /precos/fontes`, `GET /precos/produtos/{id}` |

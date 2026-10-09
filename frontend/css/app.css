@@ -3006,3 +3006,116 @@ button.nome-anexo {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+
+/* ---------- Sugestão de compra ---------- */
+
+.resumo-sugestao {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.resumo-sugestao > div {
+  display: grid;
+  gap: 2px;
+  padding: 16px 18px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-grande);
+  box-shadow: var(--sombra-cartao);
+}
+
+.resumo-sugestao strong {
+  font-family: var(--fonte-titulo);
+  font-size: 1.5rem;
+}
+
+.tabela-sugestao td {
+  vertical-align: top;
+}
+
+.nome-sugestao {
+  display: block;
+  font-weight: 600;
+}
+
+.detalhe-sugestao {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
+.motivo-sugestao {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--fibra-amarelo) 15%, var(--superficie));
+  color: color-mix(in srgb, var(--fibra-amarelo) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.motivo-sugestao[data-urgente="true"] {
+  background: color-mix(in srgb, var(--fibra-vermelho) 12%, var(--superficie));
+  color: color-mix(in srgb, var(--fibra-vermelho) var(--forca-status-texto), var(--mistura-status-texto));
+}
+
+.sem-necessidade td {
+  color: var(--tinta-suave);
+}
+
+.explicacao-sugestao {
+  margin-top: 20px;
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
+}
+
+.explicacao-sugestao summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+.quadro.vazio {
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.tabela-sugestao td:has(.nome-sugestao) {
+  min-width: 240px;
+}
+
+.tabela-sugestao td,
+.tabela-sugestao th {
+  white-space: nowrap;
+}
+
+.tabela-sugestao td:has(.nome-sugestao) {
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .resumo-sugestao {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .resumo-sugestao > div {
+    padding: 10px 12px;
+  }
+
+  .resumo-sugestao strong {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .resumo-sugestao > div {
+    min-width: 0;
+  }
+
+  .resumo-sugestao .dica-campo {
+    display: none;
+  }
+}

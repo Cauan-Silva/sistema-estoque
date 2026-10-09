@@ -14,6 +14,7 @@ import { telaFornecedores } from "./telas/fornecedores.js";
 import { telaSolicitacoes } from "./telas/solicitacoes.js";
 import { telaSolicitacao } from "./telas/solicitacao.js";
 import { telaImportarOrcamentos } from "./telas/importar_orcamentos.js";
+import { telaSugestoesCompra } from "./telas/sugestoes_compra.js";
 import { telaCompras } from "./telas/compras.js";
 import { telaRelatorioCompras } from "./telas/relatorio_compras.js";
 import { telaFormasPagamento } from "./telas/formas_pagamento.js";
@@ -34,6 +35,7 @@ const MENU = [
     itens: [
       { caminho: "#/fornecedores", texto: "Fornecedores", cor: "var(--fibra-laranja)" },
       { caminho: "#/formas-pagamento", texto: "Formas de pagamento", cor: "var(--fibra-laranja)" },
+      { caminho: "#/sugestoes-compra", texto: "Sugestão de compra", cor: "var(--fibra-laranja)" },
       { caminho: "#/solicitacoes", texto: "Solicitações", cor: "var(--fibra-laranja)" },
       { caminho: "#/compras", texto: "Compras", cor: "var(--fibra-marrom)" },
       { caminho: "#/relatorio-compras", texto: "Relatório de compras", cor: "var(--fibra-agua)" },
@@ -51,6 +53,7 @@ const ROTAS = [
   { padrao: /^#\/solicitacoes\/importar$/, tela: telaImportarOrcamentos, permissao: "cotacoes.editar" },
   { padrao: /^#\/solicitacoes\/(\d+)$/, tela: telaSolicitacao },
   { padrao: /^#\/compras$/, tela: telaCompras },
+  { padrao: /^#\/sugestoes-compra$/, tela: telaSugestoesCompra },
   { padrao: /^#\/relatorio-compras$/, tela: telaRelatorioCompras },
   { padrao: /^#\/formas-pagamento$/, tela: telaFormasPagamento },
   { padrao: /^#\/usuarios$/, tela: telaUsuarios, permissao: "usuarios.gerenciar" },
@@ -64,7 +67,7 @@ let areaConteudo = null;
 /* Cor de destaque por módulo (tokens --cor-N no CSS). */
 function areaDaRota(hash) {
   if (/^#\/(produtos|categorias|movimentacoes)/.test(hash)) return "estoque";
-  if (/^#\/(fornecedores|solicitacoes|compras|formas-pagamento)/.test(hash)) return "compras";
+  if (/^#\/(fornecedores|solicitacoes|compras|formas-pagamento|sugestoes-compra)/.test(hash)) return "compras";
   if (/^#\/relatorio-compras/.test(hash)) return "relatorios";
   if (/^#\/(usuarios|auditoria)/.test(hash)) return "admin";
   return "painel";

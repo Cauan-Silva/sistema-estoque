@@ -20,10 +20,10 @@ const ROTULOS = {
 
 let contador;
 let lista;
-let ultimoTotal = null;
 let temporizador;
 
-function desenhar(dados) {
+function desenhar(resposta) {
+  const dados = { total: Number(resposta?.total) || 0, itens: Array.isArray(resposta?.itens) ? resposta.itens : [] };
   const total = dados.total;
   contador.textContent = total > 99 ? "99+" : String(total);
   contador.hidden = total === 0;
@@ -42,8 +42,6 @@ function desenhar(dados) {
         )
       : [h("p", { class: "notificacoes-vazio" }, "Nada pendente para você agora.")])
   );
-
-  ultimoTotal = total;
 }
 
 export async function atualizarNotificacoes() {
@@ -81,5 +79,4 @@ export function sinoNotificacoes(grupo, aoNavegar) {
 export function pararNotificacoes() {
   clearInterval(temporizador);
   lista = null;
-  ultimoTotal = null;
 }
