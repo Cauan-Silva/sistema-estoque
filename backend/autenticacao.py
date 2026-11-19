@@ -24,6 +24,13 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/usuarios/token"
 )
 
+# Mesma origem do token, mas sem exigir o cabeçalho: usada em rotas que
+# aceitam tanto um visitante quanto um usuário logado.
+oauth2_scheme_opcional = OAuth2PasswordBearer(
+    tokenUrl="/usuarios/token",
+    auto_error=False
+)
+
 
 def criar_token_acesso(
     usuario_id: int,
@@ -72,6 +79,23 @@ def validar_token_acesso(token: str):
 def obter_usuario_atual(
     token: str = Depends(oauth2_scheme)
 ):
+    return _usuario_do_token(token)
+
+
+def obter_usuario_opcional(
+    token: str | None = Depends(oauth2_scheme_opcional)
+):
+    """Devolve o usuário do token, ou None quando não há token.
+
+    Um token enviado mas inválido continua sendo recusado com 401.
+    """
+    if token is None:
+        return None
+
+    return _usuario_do_token(token)
+
+
+def _usuario_do_token(token: str):
     dados_token = validar_token_acesso(token)
 
     if dados_token is None:

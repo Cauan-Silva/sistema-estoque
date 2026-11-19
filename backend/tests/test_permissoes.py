@@ -12,9 +12,14 @@ def test_primeiro_usuario_e_administrador_e_os_demais_consulta(client):
         "/usuarios",
         json={"nome": "Primeiro", "email": "primeiro@teste.com", "senha": "senha123"}
     )
+    token = client.post(
+        "/usuarios/login",
+        json={"email": "primeiro@teste.com", "senha": "senha123"}
+    ).json()["access_token"]
     segundo = client.post(
         "/usuarios",
-        json={"nome": "Segundo", "email": "segundo@teste.com", "senha": "senha123"}
+        json={"nome": "Segundo", "email": "segundo@teste.com", "senha": "senha123"},
+        headers={"Authorization": f"Bearer {token}"}
     )
 
     assert primeiro.json()["perfil"] == "ADMINISTRADOR"
