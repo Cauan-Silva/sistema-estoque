@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 import { NOMES_PERFIS, usuario } from "../sessao.js";
-import { avisar, cabecalho, confirmar, etiquetaStatus, executar, formatar, h, seletor, tabela } from "../ui.js";
+import { abrirFormulario, avisar, cabecalho, confirmar, etiquetaStatus, executar, formatar, h, seletor, tabela } from "../ui.js";
 
 const DESCRICOES = [
   ["Administrador", "Faz tudo, inclusive gerenciar usuários e ver a auditoria."],
@@ -13,6 +13,33 @@ const DESCRICOES = [
 export async function telaUsuarios(area) {
   const lista = h("div");
   const eu = usuario();
+
+  function novoUsuario() {
+    abrirFormulario({
+      titulo: "Novo usuário",
+      descricao: "Passe o e-mail e a senha para a pessoa. Ela pode entrar logo em seguida.",
+      campos: [
+        { nome: "nome", rotulo: "Nome", obrigatorio: true, minimo: 2, maximo: 150, autocompletar: "off" },
+        { nome: "email", rotulo: "E-mail", tipo: "email", obrigatorio: true, autocompletar: "off" },
+        {
+          nome: "senha",
+          rotulo: "Senha inicial",
+          tipo: "password",
+          obrigatorio: true,
+          minimo: 8,
+          maximo: 72,
+          autocompletar: "new-password",
+        },
+        { nome: "perfil", rotulo: "Perfil", tipo: "select", opcoes: Object.entries(NOMES_PERFIS), valor: "CONSULTA" },
+      ],
+      textoAcao: "Criar usuário",
+      aoEnviar: async (dados) => {
+        const criado = await api.post("/usuarios", dados);
+        avisar(`${criado.nome} cadastrado como ${NOMES_PERFIS[criado.perfil]}.`);
+        carregar();
+      },
+    });
+  }
 
   async function alterarPerfil(pessoa, evento) {
     const perfil = evento.target.value;
@@ -96,7 +123,8 @@ export async function telaUsuarios(area) {
   area.replaceChildren(
     cabecalho(
       "Usuários",
-      "Defina o perfil de cada pessoa. Quem cria uma conta nova entra como Consulta até receber um perfil."
+      "Crie as contas de quem usa o sistema e defina o perfil de cada pessoa. Não há cadastro público.",
+      h("button", { class: "primario", onClick: novoUsuario }, "Novo usuário")
     ),
     lista,
     h(

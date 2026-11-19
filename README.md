@@ -177,7 +177,7 @@ cloudflared tunnel --url http://localhost:8000
 
 O terminal mostra um endereço `https://...trycloudflare.com`; quem tiver o link acessa `.../app/`. O endereço muda toda vez que o túnel é reiniciado e só funciona enquanto o PC e o terminal estiverem ligados. Para um endereço fixo, é preciso um domínio próprio na Cloudflare e um túnel nomeado.
 
-Antes de passar o link, lembre que qualquer pessoa com ele vê a tela de entrada: novos cadastros entram como **Consulta**, e o administrador decide o perfil em **Usuários**.
+Antes de passar o link, crie o administrador (a primeira conta do sistema). Quem tiver o link vê apenas a tela de entrada: não existe cadastro público, as contas são criadas pelo administrador em **Usuários**, e senhas erradas repetidas bloqueiam o login por 15 minutos. Pelo túnel, todos os acessos chegam com o mesmo IP, então o bloqueio vale, na prática, por e-mail.
 
 ## Configuração (.env)
 
@@ -254,7 +254,8 @@ Telas: Entrar e criar conta, Painel, Produtos, Categorias, Movimentações, Forn
 | Criar solicitação pela sugestão de compra | ✓ | ✓ | | ✓ | |
 | Gerenciar usuários e ver a auditoria | ✓ | | | | |
 
-- O primeiro usuário de um banco novo é Administrador; os seguintes entram como Consulta.
+- Não há cadastro público. Num banco novo, a tela de entrada pede para criar o primeiro usuário, que vira Administrador; depois disso, só um administrador cria contas (em **Usuários > Novo usuário**, com perfil Consulta por padrão).
+- Depois de 5 senhas erradas para o mesmo e-mail (e IP) em 15 minutos, o login fica bloqueado por até 15 minutos (HTTP `429`, com o tempo restante no cabeçalho `Retry-After`). Um login certo zera a contagem; reiniciar a API também.
 - Ninguém aprova ou reprova uma solicitação criada por si, exceto o Administrador.
 - Um administrador não pode remover o próprio acesso de administrador.
 - Sem permissão, a API responde `403` e o frontend esconde o botão.
@@ -534,6 +535,5 @@ Já concluídos: notificações para quem precisa agir, anexos de notas fiscais 
 
 - Recuperação de senha por e-mail
 - Notificações por e-mail ou WhatsApp, além do sino
-- Opção para desativar o cadastro público, quando o sistema estiver na internet
 - Endereço fixo na internet (domínio próprio com túnel nomeado da Cloudflare)
 - Outras fontes de preço automáticas além do Mercado Livre
