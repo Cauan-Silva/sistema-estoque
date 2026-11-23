@@ -58,6 +58,17 @@ def limpar_banco():
     yield
 
 
+@pytest.fixture(autouse=True)
+def limpar_limite_login():
+    from backend.routes.usuarios import limitador_login
+
+    limitador_login.limpar_tudo()
+
+    yield
+
+    limitador_login.limpar_tudo()
+
+
 @pytest.fixture()
 def client():
     with TestClient(app) as cliente:

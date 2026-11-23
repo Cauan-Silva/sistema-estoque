@@ -1,19 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from backend.autenticacao import (
     criar_token_acesso,
     obter_usuario_atual,
+    obter_usuario_opcional,
 )
-from backend.permissoes import exigir, permissoes_do_perfil
+from backend.limite_login import LimitadorTentativas
+from backend.permissoes import (
+    PERMISSOES,
+    exigir,
+    perfil_do_usuario,
+    permissoes_do_perfil,
+)
 from backend.repositorio_usuario import (
     atualizar_acesso_usuario,
     buscar_usuario_por_email,
     cadastrar_usuario,
+    existe_usuario,
     listar_usuarios,
     verificar_senha,
 )
 from backend.schemas.usuario import (
+    ConfiguracaoInicialResposta,
     TokenResposta,
     UsuarioAcesso,
     UsuarioAtualResposta,
@@ -34,12 +43,44 @@ router = APIRouter(
     response_model=UsuarioResposta,
     status_code=status.HTTP_201_CREATED
 )
-def criar_usuario(usuario: UsuarioCriacao):
-    usuario_cadastrado, erro = cadastrar_usuario(
-        nome=usuario.nome,
-        email=usuario.email,
-        senha=usuario.senha
-    )
+def criar_usuario(
+    usuario: UsuarioCriacao,
+    usuario_logado=Depends(obter_usuario_opcional)
+):
+    """Cadastra um usuário.
+
+    Sem login, só é possível criar o primeiro usuário do sistema, que vira
+    ADMINISTRADOR. Depois disso, apenas administradores cadastram usuários.
+    """
+    if usuario_logado is not None:
+        if perfil_do_usuario(usuario_logado) not in PERMISSOES[
+            "usuarios.gerenciar"
+        ]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seu perfil não tem permissão para esta ação."
+            )
+
+        usuario_cadastrado, erro = cadastrar_usuario(
+            nome=usuario.nome,
+            email=usuario.email,
+            senha=usuario.senha,
+            perfil=usuario.perfil
+        )
+    else:
+        usuario_cadastrado, erro = cadastrar_usuario(
+            nome=usuario.nome,
+            email=usuario.email,
+            senha=usuario.senha,
+            apenas_primeiro=True
+        )
+
+    if erro == "ja_existem_usuarios":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Entre como administrador para cadastrar usuários.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     if erro == "email_duplicado":
         raise HTTPException(
@@ -63,14 +104,32 @@ def criar_usuario(usuario: UsuarioCriacao):
     }
 
 
+@router.get(
+    "/configuracao-inicial",
+    response_model=ConfiguracaoInicialResposta,
+    summary="Indica se o sistema ainda não tem nenhum usuário"
+)
+def configuracao_inicial():
+    existe = existe_usuario()
+
+    if existe is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Não foi possível consultar os usuários."
+        )
+
+    return {"precisa_configurar": not existe}
+
+
 @router.post(
     "/login",
     response_model=TokenResposta
 )
-def login(usuario_login: UsuarioLogin):
+def login(usuario_login: UsuarioLogin, request: Request):
     return autenticar_usuario(
         email=usuario_login.email,
-        senha=usuario_login.senha
+        senha=usuario_login.senha,
+        ip=_ip_do_cliente(request)
     )
 
 
@@ -80,33 +139,56 @@ def login(usuario_login: UsuarioLogin):
     summary="Login via formulário (usado pelo Authorize do Swagger)"
 )
 def login_formulario(
+    request: Request,
     formulario: OAuth2PasswordRequestForm = Depends()
 ):
     return autenticar_usuario(
         email=formulario.username.strip().lower(),
-        senha=formulario.password
+        senha=formulario.password,
+        ip=_ip_do_cliente(request)
     )
 
 
-def autenticar_usuario(email: str, senha: str):
+# Até 5 senhas erradas por e-mail + IP em 15 minutos; depois, HTTP 429.
+limitador_login = LimitadorTentativas(
+    max_tentativas=5,
+    janela_segundos=15 * 60
+)
+
+
+def _ip_do_cliente(request: Request) -> str:
+    # Usa o IP da conexão, e não X-Forwarded-For, que o cliente pode forjar.
+    # Atrás de um túnel/proxy todos chegam com o mesmo IP: o limite passa a
+    # valer, na prática, por e-mail.
+    return request.client.host if request.client else "desconhecido"
+
+
+def autenticar_usuario(email: str, senha: str, ip: str = "desconhecido"):
+    chave = (email.strip().lower(), ip)
+
+    segundos = limitador_login.segundos_restantes(chave)
+
+    if segundos > 0:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Muitas tentativas de login sem sucesso. "
+                "Aguarde 15 minutos e tente novamente."
+            ),
+            headers={"Retry-After": str(segundos)}
+        )
+
     usuario = buscar_usuario_por_email(email)
 
-    if usuario is None:
+    if usuario is None or not verificar_senha(senha, usuario[3]):
+        limitador_login.registrar_falha(chave)
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha inválidos."
         )
 
-    senha_valida = verificar_senha(
-        senha,
-        usuario[3]
-    )
-
-    if not senha_valida:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha inválidos."
-        )
+    limitador_login.limpar(chave)
 
     if not usuario[4]:
         raise HTTPException(

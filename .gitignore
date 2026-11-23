@@ -20,3 +20,8 @@ Thumbs.db
 
 # macOS
 .DS_Store
+# Dumps e backups do banco (podem conter dados reais e hashes de senha)
+*.sql
+*.dump
+*.backup
+backup*

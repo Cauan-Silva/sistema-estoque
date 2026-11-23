@@ -214,7 +214,10 @@ class Importador:
                 continue
             email = re.sub(r"[^a-z0-9.]", "", _normalizar(nome).lower().replace(" ", ".")) + DOMINIO_HISTORICO
             senha = secrets.token_urlsafe(18)
-            criado = self.cliente.post("/usuarios", json={"nome": nome.title(), "email": email, "senha": senha})
+            # Só administrador cadastra usuários; se falhar, as ações ficam com o administrador
+            # (por isso qualquer status é "esperado" aqui e não entra na lista de erros).
+            criado = self.chamar("POST", "/usuarios", self.admin, esperado=range(100, 600),
+                                 json={"nome": nome.title(), "email": email, "senha": senha})
             if criado.status_code != 201:
                 self.pessoas[nome] = (self.admin, True)
                 continue

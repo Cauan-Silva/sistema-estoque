@@ -25,7 +25,45 @@ def verificar_senha(
     )
 
 
-def cadastrar_usuario(nome: str, email: str, senha: str):
+# Chave fixa do advisory lock que serializa os cadastros de usuário. Assim,
+# duas requisições simultâneas num banco vazio não viram ambas administrador.
+TRAVA_CADASTRO_USUARIO = 72_640_001
+
+
+def existe_usuario() -> bool | None:
+    conexao = conectar()
+
+    if conexao is None:
+        return None
+
+    try:
+        cursor = conexao.cursor()
+        cursor.execute("SELECT EXISTS (SELECT 1 FROM usuarios);")
+        existe = cursor.fetchone()[0]
+        cursor.close()
+        conexao.close()
+
+        return existe
+
+    except psycopg2.Error:
+        conexao.close()
+        return None
+
+
+def cadastrar_usuario(
+    nome: str,
+    email: str,
+    senha: str,
+    perfil: str | None = None,
+    apenas_primeiro: bool = False
+):
+    """Cadastra um usuário.
+
+    O primeiro usuário do sistema é sempre ADMINISTRADOR; os demais recebem
+    `perfil` (padrão CONSULTA). Com `apenas_primeiro=True`, só cadastra se
+    ainda não houver nenhum usuário (devolve o erro "ja_existem_usuarios").
+    A verificação e o INSERT ocorrem na mesma transação, sob um advisory lock.
+    """
     conexao = conectar()
 
     if conexao is None:
@@ -37,6 +75,24 @@ def cadastrar_usuario(nome: str, email: str, senha: str):
         senha_hash = gerar_hash_senha(senha)
 
         cursor.execute(
+            "SELECT pg_advisory_xact_lock(%s);",
+            (TRAVA_CADASTRO_USUARIO,)
+        )
+        cursor.execute("SELECT EXISTS (SELECT 1 FROM usuarios);")
+        ja_existe = cursor.fetchone()[0]
+
+        if ja_existe and apenas_primeiro:
+            conexao.rollback()
+            cursor.close()
+            conexao.close()
+
+            return None, "ja_existem_usuarios"
+
+        perfil_final = (
+            (perfil or "CONSULTA") if ja_existe else "ADMINISTRADOR"
+        )
+
+        cursor.execute(
             """
             INSERT INTO usuarios (
                 nome,
@@ -44,14 +100,7 @@ def cadastrar_usuario(nome: str, email: str, senha: str):
                 senha_hash,
                 perfil
             )
-            SELECT
-                %s,
-                %s,
-                %s,
-                CASE
-                    WHEN EXISTS (SELECT 1 FROM usuarios) THEN 'CONSULTA'
-                    ELSE 'ADMINISTRADOR'
-                END
+            VALUES (%s, %s, %s, %s)
             RETURNING
                 id,
                 nome,
@@ -63,7 +112,8 @@ def cadastrar_usuario(nome: str, email: str, senha: str):
             (
                 nome,
                 email.lower(),
-                senha_hash
+                senha_hash,
+                perfil_final
             )
         )
 
